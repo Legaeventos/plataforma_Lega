@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#8e61bb">
+  <meta name="description" content="Plataforma de gestão da Lega Eventos">
+  <title>Plataforma Lega</title>
+  <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/reset.css">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/sidebar.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar" aria-label="Navegação principal">
+      <div class="brand-area">
+        <img src="assets/logo/logo-lega.png" alt="Lega Eventos" class="brand-logo">
+        <div class="brand-copy">
+          <strong>Plataforma Lega</strong>
+          <span>Gestão que floresce</span>
+        </div>
+      </div>
+
+      <nav class="nav-list" id="mainNav">
+        <button class="nav-item active" data-route="dashboard"><span class="leaf-icon"><img src="assets/botanica/folha.svg" alt=""></span><span>Hoje na Lega</span></button>
+        <button class="nav-item" data-route="agenda"><span class="leaf-icon"><img src="assets/botanica/folha.svg" alt=""></span><span>Agenda</span></button>
+        <button class="nav-item" data-route="eventos"><span class="leaf-icon"><img src="assets/botanica/folha.svg" alt=""></span><span>Eventos</span></button>
+        <button class="nav-item" data-route="clientes"><span class="leaf-icon"><img src="assets/botanica/folha.svg" alt=""></span><span>Clientes</span></button>
+        <button class="nav-item" data-route="orcamentos"><span class="leaf-icon"><img src="assets/botanica/folha.svg" alt=""></span><span>Orçamentos</span></button>
+        <button class="nav-item" data-route="contratos"><span class="leaf-icon"><img src="assets/botanica/folha.svg" alt=""></span><span>Contratos</span></button>
+        <button class="nav-item" data-route="financeiro"><span class="leaf-icon"><img src="assets/botanica/folha.svg" alt=""></span><span>Financeiro</span></button>
+        <button class="nav-item" data-route="estoque"><span class="leaf-icon"><img src="assets/botanica/folha.svg" alt=""></span><span>Estoque</span></button>
+        <button class="nav-item" data-route="relatorios"><span class="leaf-icon"><img src="assets/botanica/folha.svg" alt=""></span><span>Relatórios</span></button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button class="nav-item" data-route="configuracoes"><span class="leaf-icon"><img src="assets/botanica/folha.svg" alt=""></span><span>Configurações</span></button>
+        <small>v1.0.6</small>
+      </div>
+    </aside>
+
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <main class="main-area">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="icon-button menu-button" id="menuButton" aria-label="Abrir menu">☰</button>
+          <div>
+            <p class="eyebrow" id="pageEyebrow">PLATAFORMA LEGA</p>
+            <h1 id="pageTitle">Hoje na Lega</h1>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <button class="icon-button notification-button" aria-label="Notificações">♢<span class="notification-dot"></span></button>
+          <button class="user-chip" id="userChip" data-route="configuracoes">
+            <span class="avatar" id="userInitials">FL</span>
+            <span class="user-copy"><strong id="userNameTop">Felipe</strong><small>Administrador</small></span>
+          </button>
+        </div>
+      </header>
+
+      <section id="app" class="content" aria-live="polite"></section>
+    </main>
+  </div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

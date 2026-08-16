@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Muda da Lega">
+  <path fill="none" stroke="#8E61BB" stroke-linecap="round" stroke-linejoin="round" stroke-width="8" d="M58 108c0-34 4-62 12-88M62 72 38 48M66 58l23-24M61 87l-24-9"/>
+  <g fill="#69C56C">
+    <path d="M35 49C20 48 12 40 10 27c15-1 25 6 29 18 2 5 0 6-4 4Z"/>
+    <path d="M87 37c1-15 10-24 25-27 1 15-6 25-20 31-5 2-7 0-5-4Z"/>
+    <path d="M35 80c-13 2-22-3-28-14 13-4 23 0 30 10 2 3 1 4-2 4Z"/>
+    <path d="M69 23c-7-12-5-23 4-33 9 10 10 21 4 33-2 4-5 4-8 0Z" transform="translate(0 13)"/>
+  </g>
+</svg>
