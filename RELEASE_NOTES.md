@@ -1,3 +1,10 @@
+# v1.1.1 — Saída de usuário
+
+- Botão **Sair** adicionado diretamente ao cabeçalho.
+- Permite trocar rapidamente entre Felipe, Paula e Lega sem precisar entrar em Configurações.
+- Mantido o logout existente em Configurações.
+- Cache atualizado para evitar carregamento da interface anterior.
+
 # v1.1.0 — Supabase compartilhado
 
 - Login por Supabase Auth.
