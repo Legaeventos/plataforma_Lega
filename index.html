@@ -17,7 +17,21 @@
   <link rel="stylesheet" href="css/responsive.css">
 </head>
 <body>
-  <div class="app-shell">
+  <section class="auth-screen" id="authScreen" hidden>
+    <div class="auth-card">
+      <img src="assets/logo/logo-lega.png" alt="Lega Eventos" class="auth-logo">
+      <p class="eyebrow">PLATAFORMA LEGA</p>
+      <h1>Entrar</h1>
+      <p class="auth-copy">Acesse com o usuário cadastrado para trabalhar com os dados compartilhados da Lega.</p>
+      <form id="loginForm" class="auth-form">
+        <label>E-mail<input name="email" type="email" autocomplete="username" required></label>
+        <label>Senha<input id="loginPassword" name="password" type="password" autocomplete="current-password" required></label>
+        <button class="btn btn-primary" type="submit">Entrar na Plataforma</button>
+        <p id="authMessage" class="auth-message" aria-live="polite"></p>
+      </form>
+    </div>
+  </section>
+  <div class="app-shell" hidden>
     <aside class="sidebar" id="sidebar" aria-label="Navegação principal">
       <div class="brand-area">
         <img src="assets/logo/logo-lega.png" alt="Lega Eventos" class="brand-logo">
@@ -41,7 +55,7 @@
 
       <div class="sidebar-footer">
         <button class="nav-item" data-route="configuracoes"><span class="leaf-icon"><img src="assets/botanica/folha.svg" alt=""></span><span>Configurações</span></button>
-        <small>v1.0.6</small>
+        <small>v1.1.0</small>
       </div>
     </aside>
 
@@ -57,10 +71,10 @@
           </div>
         </div>
         <div class="topbar-actions">
-          <button class="icon-button notification-button" aria-label="Notificações">♢<span class="notification-dot"></span></button>
+          <button class="icon-button sync-button" id="syncStatus" aria-label="Sincronização" title="Sincronização">…</button>
           <button class="user-chip" id="userChip" data-route="configuracoes">
             <span class="avatar" id="userInitials">FL</span>
-            <span class="user-copy"><strong id="userNameTop">Felipe</strong><small>Administrador</small></span>
+            <span class="user-copy"><strong id="userNameTop">Usuário</strong><small id="userRoleTop">Administrador</small></span>
           </button>
         </div>
       </header>

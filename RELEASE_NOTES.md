@@ -1,3 +1,12 @@
+# v1.1.0 — Supabase compartilhado
+
+- Login por Supabase Auth.
+- Perfis Felipe/Paula/Lega carregados do banco.
+- Estado compartilhado entre dispositivos.
+- Cache local e reenvio após perda de conexão.
+- Indicador de sincronização no cabeçalho.
+- Logout em Configurações.
+
 # v1.0.6 — Abas integradas
 
 - Agenda alimentada automaticamente pelos eventos.
