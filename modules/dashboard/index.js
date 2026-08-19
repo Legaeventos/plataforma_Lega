@@ -106,7 +106,8 @@ function operationalData() {
     const date = parseDate(quote?.data || event?.data);
     const total = eventValue(event, quote);
     const paid = eventReceived(event);
-    const receivable = event?.status === 'realizado' ? 0 : Math.max(0, total - paid);
+    const contracted = event?.status && event.status !== 'orcamento';
+    const receivable = contracted && event?.status !== 'realizado' ? Math.max(0, total - paid) : 0;
     return { event, quote, analysis, date, total, paid, receivable };
   });
 

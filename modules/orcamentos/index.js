@@ -8,7 +8,7 @@ const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'B
 const dateBR=v=>{if(!v)return'—';const[y,m,d]=String(v).split('-').map(Number);return y&&m&&d?new Intl.DateTimeFormat('pt-BR').format(new Date(y,m-1,d)):'—';};
 const getEvents=()=>readJSON(EVENTS_KEY,[]);
 
-function flattenQuotes(){return getEvents().flatMap(event=>(event.orcamentos||[]).map(q=>({event,quote:q,chosen:q.id===event.orcamentoEscolhidoId,accepted:q.id===event.orcamentoEscolhidoId&&event.status!=='orcamento'})));}
+function flattenQuotes(){return getEvents().flatMap(event=>(event.orcamentos||[]).map(q=>{const accepted=event.status!=='orcamento'&&q.id===event.orcamentoEscolhidoId;const chosen=!accepted&&!!event.orcamentoEscolhidoManual&&q.id===event.orcamentoEscolhidoId;return{event,quote:q,chosen,accepted};}));}
 function quoteStatus(x){if(x.accepted)return['aceito','Aceito'];if(x.chosen)return['escolhido','Escolhido'];return['emitido','Emitido'];}
 
 export function render(){

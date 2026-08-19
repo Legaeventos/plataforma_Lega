@@ -54,3 +54,10 @@
 - Filtros por situação, pesquisa e indicadores comerciais.
 - Abertura direta do evento correspondente a partir de Clientes e Orçamentos.
 - Botões “Iniciar orçamento” direcionam ao fluxo correto dentro de Eventos.
+
+## v1.1.2 — Orçamentos e tabelas anuais
+- Orçamentos apenas gerados/salvos não são mais marcados automaticamente como escolhidos.
+- Valores a receber no Hoje na Lega passam a considerar apenas eventos cujo orçamento foi aceito/contratado.
+- A escolha explícita de uma versão fica registrada separadamente.
+- Ao aceitar um orçamento, a versão selecionada fica vinculada ao evento.
+- Geração de tabela futura corrigida para aplicar 10% ano a ano (2027 sobre 2026, 2028 sobre 2027, etc.).
