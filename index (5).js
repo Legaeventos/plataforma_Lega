@@ -1,14 +1,85 @@
 import { readJSON, writeJSON } from '../../js/storage.js';
-const EVENTS_KEY='lega.eventos';const GENERAL_KEY='lega.financeiro.lancamentos';const NAV_KEY='lega.navigation.request';
-let state={query:'',tipo:'todos',month:new Date().toISOString().slice(0,7)};
-const uid=(p='fin')=>`${p}_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+
+const CLIENTS_KEY='lega.clientes';
+const EVENTS_KEY='lega.eventos';
+const NAV_KEY='lega.navigation.request';
+let state={query:'',selectedId:null};
+
 const esc=(v='')=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c]));
 const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-const dateBR=v=>{if(!v)return'—';const[y,m,d]=String(v).slice(0,10).split('-').map(Number);return new Intl.DateTimeFormat('pt-BR').format(new Date(y,m-1,d));};
+const dateBR=v=>{if(!v)return'—';const[y,m,d]=String(v).split('-').map(Number);return y&&m&&d?new Intl.DateTimeFormat('pt-BR').format(new Date(y,m-1,d)):'—';};
 const selectedQuote=e=>e?.orcamentos?.find(q=>q.id===e.orcamentoEscolhidoId)||e?.orcamentos?.at(-1)||null;
-const events=()=>readJSON(EVENTS_KEY,[]);const general=()=>readJSON(GENERAL_KEY,[]);
-function allEntries(){const ev=events().flatMap(event=>(event.lancamentosFinanceiros||[]).map(x=>({...x,eventId:event.id,eventName:selectedQuote(event)?.nome||selectedQuote(event)?.cliente||'Evento',source:'evento'})));return [...ev,...general().map(x=>({...x,source:'geral'}))];}
-function dueReceivables(){return events().map(e=>{const q=selectedQuote(e);if(!q||e.status==='orcamento')return null;const received=(e.lancamentosFinanceiros||[]).filter(x=>x.tipo==='entrada').reduce((s,x)=>s+Number(x.valor||0),0);const saldo=Math.max(0,Number(q.valor||0)-received);return saldo>0?{event:e,quote:q,saldo}:null;}).filter(Boolean);}
-export function render(){const evs=events();const all=allEntries();const filtered=all.filter(x=>{const txt=`${x.descricao||''} ${x.eventName||''} ${x.forma||''}`.toLowerCase();const monthOk=!state.month||String(x.data||x.createdAt||'').slice(0,7)===state.month;return monthOk&&(!state.query||txt.includes(state.query.toLowerCase()))&&(state.tipo==='todos'||x.tipo===state.tipo);}).sort((a,b)=>String(b.data||b.createdAt||'').localeCompare(String(a.data||a.createdAt||'')));const monthEntries=all.filter(x=>String(x.data||x.createdAt||'').slice(0,7)===state.month);const entradas=monthEntries.filter(x=>x.tipo==='entrada').reduce((s,x)=>s+Number(x.valor||0),0);const saidas=monthEntries.filter(x=>x.tipo==='saida').reduce((s,x)=>s+Number(x.valor||0),0);const receber=dueReceivables().reduce((s,x)=>s+x.saldo,0);return `<div class="page-grid finance-module"><section class="events-header"><div><span class="eyebrow">GESTÃO</span><h2>Financeiro</h2><p>Consolida os lançamentos dos eventos e permite registrar receitas ou despesas gerais da Lega.</p></div></section><section class="finance-kpis"><div class="panel"><small>Entradas no mês</small><strong>${money(entradas)}</strong></div><div class="panel"><small>Saídas no mês</small><strong>${money(saidas)}</strong></div><div class="panel"><small>Resultado do mês</small><strong>${money(entradas-saidas)}</strong></div><div class="panel"><small>A receber de eventos</small><strong>${money(receber)}</strong></div></section><section class="panel"><div class="panel-header"><div><h2>Novo lançamento</h2><p>Se vinculado a um evento, o lançamento também aparecerá no financeiro daquele evento.</p></div></div><form id="globalFinanceForm" class="form-grid"><div class="field"><label>Tipo</label><select name="tipo"><option value="entrada">Entrada</option><option value="saida">Saída</option></select></div><div class="field"><label>Evento (opcional)</label><select name="eventId"><option value="">Lançamento geral</option>${evs.map(e=>{const q=selectedQuote(e)||{};return `<option value="${e.id}">${esc(q.nome||q.cliente||'Evento')} · ${dateBR(q.data)}</option>`;}).join('')}</select></div><div class="field"><label>Descrição</label><input name="descricao" required></div><div class="field"><label>Valor</label><input name="valor" type="number" min="0.01" step="0.01" required></div><div class="field"><label>Data</label><input name="data" type="date" value="${new Date().toISOString().slice(0,10)}" required></div><div class="field"><label>Forma</label><select name="forma"><option>Pix</option><option>Dinheiro</option><option>Cartão</option><option>Transferência</option><option>Boleto</option><option>Outro</option></select></div><div class="field-full form-actions"><button class="btn btn-primary">Salvar lançamento</button></div></form></section><section class="panel finance-toolbar"><div class="events-search"><span>⌕</span><input id="financeSearch" value="${esc(state.query)}" placeholder="Buscar descrição ou evento"></div><select id="financeType"><option value="todos">Entradas e saídas</option><option value="entrada" ${state.tipo==='entrada'?'selected':''}>Entradas</option><option value="saida" ${state.tipo==='saida'?'selected':''}>Saídas</option></select><input id="financeMonth" type="month" value="${state.month}"></section><section class="panel"><div class="table-wrap"><table class="event-table"><thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th>Evento</th><th>Forma</th><th>Valor</th><th></th></tr></thead><tbody>${filtered.length?filtered.map(x=>`<tr><td>${dateBR(x.data||x.createdAt)}</td><td><span class="finance-type finance-type--${x.tipo}">${x.tipo==='entrada'?'Entrada':'Saída'}</span></td><td>${esc(x.descricao||'')}</td><td>${esc(x.eventName||'Geral')}</td><td>${esc(x.forma||'—')}</td><td><strong>${money(x.valor)}</strong></td><td>${x.eventId?`<button class="btn btn-ghost" data-action="open-fin-event" data-event="${x.eventId}">Evento</button>`:(x.source==='geral'?`<button class="btn btn-ghost" data-action="delete-general" data-id="${x.id}">Excluir</button>`:'')}</td></tr>`).join(''):'<tr><td colspan="7">Nenhum lançamento para o filtro selecionado.</td></tr>'}</tbody></table></div></section></div>`;}
-export function renderFinanceiro(){return render();}
-export function mount({navigate}={}){const root=document.querySelector('#app');if(!root)return;const rerender=()=>{root.innerHTML=render();mount({navigate});};root.querySelector('#financeSearch')?.addEventListener('input',e=>{state.query=e.target.value;rerender();});root.querySelector('#financeType')?.addEventListener('change',e=>{state.tipo=e.target.value;rerender();});root.querySelector('#financeMonth')?.addEventListener('change',e=>{state.month=e.target.value;rerender();});root.querySelector('#globalFinanceForm')?.addEventListener('submit',e=>{e.preventDefault();const d=Object.fromEntries(new FormData(e.currentTarget).entries());const item={id:uid(),tipo:d.tipo,descricao:d.descricao,valor:Number(d.valor||0),data:d.data,forma:d.forma,createdAt:new Date().toISOString()};if(d.eventId){writeJSON(EVENTS_KEY,events().map(ev=>ev.id===d.eventId?{...ev,lancamentosFinanceiros:[...(ev.lancamentosFinanceiros||[]),item],historico:[...(ev.historico||[]),{id:uid('hist'),label:d.tipo==='entrada'?'Recebimento registrado':'Despesa registrada',detail:`${d.descricao} · ${money(item.valor)}`,at:new Date().toISOString()}]}:ev));}else writeJSON(GENERAL_KEY,[...general(),item]);rerender();});root.querySelectorAll('[data-action="open-fin-event"]').forEach(b=>b.onclick=()=>{writeJSON(NAV_KEY,{eventId:b.dataset.event,tab:'financeiro'});navigate?.('eventos');});root.querySelectorAll('[data-action="delete-general"]').forEach(b=>b.onclick=()=>{if(confirm('Excluir este lançamento geral?')){writeJSON(GENERAL_KEY,general().filter(x=>x.id!==b.dataset.id));rerender();}});}
+const getClients=()=>readJSON(CLIENTS_KEY,[]);
+const getEvents=()=>readJSON(EVENTS_KEY,[]);
+const saveClients=v=>writeJSON(CLIENTS_KEY,v);
+
+function relatedEvents(client,events){
+  const cpf=String(client.cpf||'').replace(/\D/g,'');
+  const phone=String(client.telefone||client.whatsapp||'').replace(/\D/g,'');
+  const name=String(client.nome||'').trim().toLowerCase();
+  return events.filter(e=>{
+    if(e.clienteId&&e.clienteId===client.id)return true;
+    const c=e.clienteContrato||{};
+    const q=selectedQuote(e)||{};
+    if(cpf&&String(c.cpf||'').replace(/\D/g,'')===cpf)return true;
+    if(phone&&String(c.telefone||c.whatsapp||'').replace(/\D/g,'')===phone)return true;
+    return name&&(String(c.nome||q.cliente||'').trim().toLowerCase()===name);
+  });
+}
+
+function clientMetrics(client,events){
+  const rel=relatedEvents(client,events);
+  const contracted=rel.filter(e=>e.status!=='orcamento').reduce((sum,e)=>sum+Number(selectedQuote(e)?.valor||0),0);
+  const dates=rel.map(e=>selectedQuote(e)?.data).filter(Boolean).sort();
+  return{events:rel,total:contracted,lastDate:dates.at(-1)||''};
+}
+
+function listView(){
+  const clients=getClients();const events=getEvents();
+  const filtered=clients.filter(c=>`${c.nome||''} ${c.cpf||''} ${c.telefone||c.whatsapp||''} ${c.email||''}`.toLowerCase().includes(state.query.toLowerCase())).sort((a,b)=>String(a.nome||'').localeCompare(String(b.nome||''),'pt-BR'));
+  return `<div class="page-grid client-module">
+    <section class="events-header"><div><span class="eyebrow">RELACIONAMENTO</span><h2>Clientes</h2><p>Cadastro alimentado automaticamente pela etapa de contrato dos eventos.</p></div><button class="btn btn-primary" data-action="go-new-event">+ Iniciar orçamento</button></section>
+    <section class="panel client-toolbar"><div class="events-search"><span>⌕</span><input id="clientSearch" value="${esc(state.query)}" placeholder="Buscar por nome, CPF, telefone ou e-mail"></div><span class="events-count">${filtered.length} de ${clients.length}</span></section>
+    ${clients.length?`<section class="client-list">${filtered.map(c=>{const m=clientMetrics(c,events);return `<article class="panel client-card"><button class="client-card__main" data-action="open-client" data-id="${c.id}"><span class="client-avatar">${esc((c.nome||'?').split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase())}</span><span><strong>${esc(c.nome||'Cliente sem nome')}</strong><small>${esc(c.telefone||c.whatsapp||'Sem telefone')}${c.cpf?` · ${esc(c.cpf)}`:''}</small></span><span class="client-card__metrics"><b>${m.events.length}</b><small>evento(s)</small></span></button></article>`;}).join('')}</section>`:`<section class="panel empty-state"><div class="empty-leaf"></div><h2>Nenhum cliente cadastrado</h2><p>O cliente será criado automaticamente quando você preencher os dados para gerar o contrato de um evento.</p><button class="btn btn-primary" data-action="go-new-event">Iniciar orçamento</button></section>`}
+  </div>`;
+}
+
+function detailView(client){
+  const events=getEvents();const m=clientMetrics(client,events);
+  return `<div class="page-grid client-module">
+    <section class="events-header"><div><button class="back-link" data-action="back-list">← Voltar</button><span class="eyebrow">CLIENTE</span><h2>${esc(client.nome||'Cliente')}</h2><p>${m.events.length} evento(s) relacionado(s) · ${money(m.total)} contratado</p></div></section>
+    <section class="panel"><div class="panel-header"><div><h2>Dados atuais</h2><p>Alterações aqui atualizam o cadastro do cliente. Contratos já gerados permanecem preservados.</p></div></div>
+      <form id="clientEditForm" class="form-grid">
+        <input type="hidden" name="id" value="${esc(client.id)}">
+        <div class="field"><label>Nome completo</label><input name="nome" required value="${esc(client.nome)}"></div>
+        <div class="field"><label>CPF</label><input name="cpf" value="${esc(client.cpf)}" placeholder="000.000.000-00"></div>
+        <div class="field"><label>WhatsApp / Telefone</label><input name="telefone" value="${esc(client.telefone||client.whatsapp)}"></div>
+        <div class="field"><label>E-mail</label><input name="email" type="email" value="${esc(client.email)}"></div>
+        <div class="field"><label>CEP</label><input name="cep" value="${esc(client.cep)}"></div>
+        <div class="field"><label>Endereço</label><input name="endereco" value="${esc(client.endereco||client.rua)}"></div>
+        <div class="field"><label>Número</label><input name="numero" value="${esc(client.numero)}"></div>
+        <div class="field"><label>Bairro</label><input name="bairro" value="${esc(client.bairro)}"></div>
+        <div class="field"><label>Cidade</label><input name="cidade" value="${esc(client.cidade)}"></div>
+        <div class="field"><label>Estado</label><input name="estado" value="${esc(client.estado||'RS')}"></div>
+        <div class="field field-full"><label>Observações internas</label><input name="observacoes" value="${esc(client.observacoes)}"></div>
+        <div class="field-full form-actions"><button class="btn btn-primary" type="submit">Salvar alterações</button></div>
+      </form>
+    </section>
+    <section class="panel"><div class="panel-header"><div><h2>Histórico de eventos</h2><p>Eventos vinculados a este cliente.</p></div><span class="badge green">${m.events.length} evento(s)</span></div>
+      ${m.events.length?`<div class="client-event-list">${[...m.events].sort((a,b)=>String(selectedQuote(b)?.data||'').localeCompare(String(selectedQuote(a)?.data||''))).map(e=>{const q=selectedQuote(e)||{};return `<button class="client-event-row" data-action="open-event" data-event="${e.id}"><span><strong>${esc(q.nome||q.tipo||'Evento')}</strong><small>${dateBR(q.data)} · ${esc(q.pacote||'')}</small></span><span><b>${money(q.valor)}</b><small>${esc(e.status||'')}</small></span></button>`;}).join('')}</div>`:'<p class="muted-copy">Ainda não há eventos vinculados a este cadastro.</p>'}
+    </section>
+  </div>`;
+}
+
+export function render(){const client=getClients().find(c=>c.id===state.selectedId);return client?detailView(client):listView();}
+export function renderClientes(){return render();}
+export function mount({navigate}={}){
+  const root=document.querySelector('#app');if(!root)return;
+  const rerender=()=>{root.innerHTML=render();mount({navigate});};
+  root.querySelector('#clientSearch')?.addEventListener('input',e=>{state.query=e.target.value;rerender();});
+  root.querySelectorAll('[data-action="open-client"]').forEach(b=>b.onclick=()=>{state.selectedId=b.dataset.id;rerender();});
+  root.querySelector('[data-action="back-list"]')?.addEventListener('click',()=>{state.selectedId=null;rerender();});
+  root.querySelectorAll('[data-action="go-new-event"]').forEach(b=>b.onclick=()=>{writeJSON(NAV_KEY,{action:'new'});navigate?.('eventos');});
+  root.querySelectorAll('[data-action="open-event"]').forEach(b=>b.onclick=()=>{writeJSON(NAV_KEY,{eventId:b.dataset.event,tab:'menu'});navigate?.('eventos');});
+  const form=root.querySelector('#clientEditForm');if(form)form.onsubmit=e=>{e.preventDefault();const d=Object.fromEntries(new FormData(form).entries());const list=getClients().map(c=>c.id===d.id?{...c,...d,updatedAt:new Date().toISOString()}:c);saveClients(list);rerender();};
+}
