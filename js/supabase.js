@@ -55,4 +55,40 @@ export async function saveRemoteState(session,dados){
   return true;
 }
 
+// --- Portaria / lista de convidados ---------------------------------
+// Diferente do restante do app (um unico blob JSON), aqui cada convidado
+// e uma linha propria na tabela lega_convidados. Isso e proposital: assim
+// duas pessoas na portaria (2 iPads) podem marcar presencas ao mesmo tempo
+// sem que uma sincronizacao apague o check-in feito pela outra.
+
+export async function fetchGuests(session,eventoId){
+  const url=`${SUPABASE_URL}/rest/v1/lega_convidados?evento_id=eq.${encodeURIComponent(eventoId)}&select=*&order=criado_em.asc`;
+  const r=await fetch(url,{headers:jsonHeaders(session.access_token)});
+  if(!r.ok)throw new Error(`Falha ao carregar convidados (${r.status}).`);
+  return r.json();
+}
+
+export async function upsertGuests(session,rows){
+  if(!rows?.length)return [];
+  const url=`${SUPABASE_URL}/rest/v1/lega_convidados?on_conflict=id`;
+  const r=await fetch(url,{method:'POST',headers:{...jsonHeaders(session.access_token),'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(rows)});
+  if(!r.ok){const txt=await r.text().catch(()=>'');throw new Error(`Falha ao salvar convidados (${r.status}) ${txt}`)}
+  return r.json();
+}
+
+export async function setGuestPresence(session,guestId,presente){
+  const url=`${SUPABASE_URL}/rest/v1/lega_convidados?id=eq.${guestId}`;
+  const body={presente,entrada_em:presente?new Date().toISOString():null,atualizado_em:new Date().toISOString(),atualizado_por:session.user.id};
+  const r=await fetch(url,{method:'PATCH',headers:{...jsonHeaders(session.access_token),'Prefer':'return=minimal'},body:JSON.stringify(body)});
+  if(!r.ok)throw new Error(`Falha ao marcar presenca (${r.status}).`);
+  return true;
+}
+
+export async function deleteGuest(session,guestId){
+  const url=`${SUPABASE_URL}/rest/v1/lega_convidados?id=eq.${guestId}`;
+  const r=await fetch(url,{method:'DELETE',headers:jsonHeaders(session.access_token)});
+  if(!r.ok)throw new Error(`Falha ao remover convidado (${r.status}).`);
+  return true;
+}
+
 export { SUPABASE_URL, SESSION_KEY };
