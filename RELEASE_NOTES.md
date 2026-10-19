@@ -1,3 +1,10 @@
+# v1.1.9 — Diagnóstico da sincronização e nova versão de contrato
+
+- Configurações → "Sincronização entre aparelhos": mostra quantos eventos/orçamentos/contratos há neste computador e na nuvem, a última sincronização e eventuais erros; botões "Sincronizar agora", "Baixar cópia dos dados" e "Recuperar itens da cópia de segurança".
+- Proteção extra: se o banco recusar a gravação condicional sem motivo, os dados já mesclados são gravados mesmo assim.
+- Contrato já assinado: botão "Alterar condições / nova versão" permite emitir nova versão (ex.: outro parcelamento). A nova versão volta a pedir assinatura das duas partes.
+- Seção do formulário renomeada para "Condições de pagamento escolhidas pelo cliente".
+
 # v1.1.8 — Sincronização entre aparelhos e atualização automática
 
 **Correção grave de sincronização**

@@ -59,9 +59,15 @@ async function syncRound(){
     emit('saving');
     const res=await saveRemoteState(session,merged,remote.atualizado_em??null);
     if(res.ok){version=res.atualizado_em;break}
+    const esperado=remote.atualizado_em??null;
     remote=await loadRemoteState(session); // outro aparelho salvou: mescla de novo
     merged=mergeState(base,local,remote.dados||{});
     version=remote.atualizado_em||null;
+    if((remote.atualizado_em??null)===esperado){
+      // A nuvem não mudou, mas a gravação condicional foi recusada: o filtro de
+      // data não está funcionando neste banco. Grava os dados já mesclados.
+      const res2=await saveRemoteState(session,merged);if(res2.ok){version=res2.atualizado_em;break}
+    }
   }
   // Se o usuário alterou algo durante a rodada, preserva essa alteração.
   const agora=snapshot();
@@ -79,8 +85,8 @@ export async function syncNow(){
   if(!syncEnabled)return {ok:false,reason:'disabled'};
   if(running){again=true;return running}
   running=(async()=>{
-    try{const r=await syncRound();emit('synced',new Date().toISOString());if(r.pendente)scheduleSync(300);return {ok:true}}
-    catch(err){markPendingLocal();emit('offline',err.message);return {ok:false,reason:'offline',error:err}}
+    try{const r=await syncRound();safeSet('lega.sync.info',JSON.stringify({em:new Date().toISOString(),ok:true}));emit('synced',new Date().toISOString());if(r.pendente)scheduleSync(300);return {ok:true}}
+    catch(err){safeSet('lega.sync.info',JSON.stringify({em:new Date().toISOString(),ok:false,erro:String(err?.message||err)}));markPendingLocal();emit('offline',err.message);return {ok:false,reason:'offline',error:err}}
     finally{running=null;if(again){again=false;scheduleSync(200)}}
   })();
   return running;
@@ -107,3 +113,16 @@ export function scheduleSync(delay=450){clearTimeout(syncTimer);syncTimer=setTim
 export async function flushSync(){if(!syncEnabled)return;if(hasPendingLocal()||running)await syncNow()}
 export function localBackups(){try{return JSON.parse(localStorage.getItem(BACKUP_KEY)||'[]')}catch{return []}}
 window.addEventListener('online',()=>{if(syncEnabled)syncNow()});
+
+// --- Diagnóstico (Configurações → Sincronização) ---------------------------
+export function syncInfo(){let info={};try{info=JSON.parse(localStorage.getItem('lega.sync.info')||'{}')}catch{}return {...info,pendente:hasPendingLocal(),versaoNuvem:localStorage.getItem(VERSION_KEY)||''}}
+export function localState(){return snapshot()}
+export function cloudState(){return readBase()||{}}
+// Recupera itens de uma cópia de segurança SOMANDO com os dados atuais
+// (nada atual é apagado; itens que só existem na cópia voltam).
+export function restoreFromBackup(index){
+  const lista=localBackups();const bk=lista[index];if(!bk)return 0;
+  const atual=snapshot();const unido=mergeState(null,atual,bk.dados||{});
+  let n=0;Object.entries(unido).forEach(([k,v])=>{if(!deepEqual(v,atual[k])){localStorage.setItem(k,JSON.stringify(v));n++}});
+  if(n){markPendingLocal();scheduleSync(100)}return n;
+}

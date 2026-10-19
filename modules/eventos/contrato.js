@@ -211,7 +211,7 @@ export function paymentSection({ total, cfgPerc, descontoPerc, dataEvento, anter
   const av = prev?.avista || {};
   const avDesconto = prev?.modalidade === 'avista' ? Number(prev?.descontoAvistaPerc || 0) > 0 : true;
   return `<section class="pg-section" id="pgSection" data-total="${total}" data-desconto="${descontoPerc}" data-evento="${esc(dataEvento || '')}" data-limite="${esc(limite)}">
-    <div class="panel-header" style="margin-top:22px"><div><h3>Condições de pagamento</h3><p>Tudo aqui é editável e fica congelado nesta versão do contrato. Valor do orçamento: <b>${money(total)}</b>.</p></div></div>
+    <div class="panel-header" style="margin-top:22px"><div><h3>Condições de pagamento escolhidas pelo cliente</h3><p>Escolha aqui como o cliente vai pagar (à vista ou entrada + parcelas, com datas). É exatamente isto que sai na Cláusula 4ª do contrato. Valor do orçamento: <b>${money(total)}</b>.</p></div></div>
     <div class="form-grid">
       <div class="field"><label>Modalidade</label><select name="pg_modalidade">${opt([['parcelado', 'Entrada + parcelas'], ['avista', 'À vista (pagamento único)']], modalidade)}</select></div>
     </div>
