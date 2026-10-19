@@ -44,15 +44,22 @@ export async function getProfile(session){
 }
 
 export async function loadRemoteState(session){
-  const r=await fetch(`${SUPABASE_URL}/rest/v1/lega_app_state?id=eq.principal&select=dados,atualizado_em`,{headers:jsonHeaders(session.access_token)});
+  const r=await fetch(`${SUPABASE_URL}/rest/v1/lega_app_state?id=eq.principal&select=dados,atualizado_em`,{cache:'no-store',headers:jsonHeaders(session.access_token)});
   if(!r.ok)throw new Error(`Falha ao carregar dados (${r.status}).`);
   const rows=await r.json();return rows?.[0]||{dados:{},atualizado_em:null};
 }
 
-export async function saveRemoteState(session,dados){
-  const r=await fetch(`${SUPABASE_URL}/rest/v1/lega_app_state?id=eq.principal`,{method:'PATCH',headers:{...jsonHeaders(session.access_token),'Prefer':'return=minimal'},body:JSON.stringify({dados,atualizado_por:session.user.id})});
+// Gravação condicional: só grava se a nuvem ainda estiver na versão que este
+// aparelho mesclou (atualizado_em). Se outro aparelho salvou no meio do
+// caminho, devolve {conflict:true} para mesclar de novo antes de gravar.
+export async function saveRemoteState(session,dados,expectedVersion){
+  const novo=new Date().toISOString();
+  const filtro=expectedVersion===undefined?'':(expectedVersion?`&atualizado_em=eq.${encodeURIComponent(expectedVersion)}`:'&atualizado_em=is.null');
+  const r=await fetch(`${SUPABASE_URL}/rest/v1/lega_app_state?id=eq.principal${filtro}&select=atualizado_em`,{method:'PATCH',cache:'no-store',headers:{...jsonHeaders(session.access_token),'Prefer':'return=representation'},body:JSON.stringify({dados,atualizado_por:session.user.id,atualizado_em:novo})});
   if(!r.ok){const txt=await r.text().catch(()=>'');throw new Error(`Falha ao sincronizar (${r.status}) ${txt}`)}
-  return true;
+  const rows=await r.json().catch(()=>[]);
+  if(!Array.isArray(rows)||!rows.length)return {conflict:true};
+  return {ok:true,atualizado_em:rows[0].atualizado_em||novo};
 }
 
 // --- Portaria / lista de convidados ---------------------------------

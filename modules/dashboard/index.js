@@ -49,7 +49,7 @@ function eventGuests(event, quote) {
 }
 
 function eventValue(event, quote) {
-  return Number(quote?.valor || event?.valorContrato || 0);
+  return Number(event?.valorContratado ?? quote?.valor ?? event?.valorContrato ?? 0);
 }
 
 function eventReceived(event) {
