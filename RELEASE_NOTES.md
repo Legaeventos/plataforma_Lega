@@ -1,3 +1,8 @@
+# v1.1.10 — Tipo do evento
+
+- Contrato: o quadro do evento mostra apenas o nome do evento (antes juntava o "Tipo do evento" entre parênteses, ex.: "Formatura (Aniversário infantil)").
+- Orçamento: o campo opcional "Tipo do evento" não vem mais preenchido com "Aniversário infantil".
+
 # v1.1.9 — Diagnóstico da sincronização e nova versão de contrato
 
 - Configurações → "Sincronização entre aparelhos": mostra quantos eventos/orçamentos/contratos há neste computador e na nuvem, a última sincronização e eventuais erros; botões "Sincronizar agora", "Baixar cópia dos dados" e "Recuperar itens da cópia de segurança".

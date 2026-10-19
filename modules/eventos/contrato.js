@@ -429,7 +429,7 @@ export function contractHTML({ snap, eventId, calc, cfg, rascunho = false }) {
   <p class="clausula">As partes acima qualificadas celebram o presente Contrato de Prestação de Serviços, que se regerá pelas cláusulas a seguir e pela legislação aplicável, em especial o Código Civil (Lei nº 10.406/2002) e o Código de Defesa do Consumidor (Lei nº 8.078/1990).</p>
 
   <div class="quadro quebra-evitar">
-    <b>Evento:</b> ${esc(q.nome || q.tipo || 'Evento')}${q.tipo && q.nome ? ` (${esc(q.tipo)})` : ''}<br>
+    <b>Evento:</b> ${esc(q.nome || q.tipo || 'Evento')}<br>
     <b>Tema:</b> ${esc(q.tema || 'A definir no checklist')}<br>
     <b>Data e horário:</b> ${dateBR(q.data)}, ${horario} (${duracao} horas de duração)<br>
     <b>Local:</b> sede da CONTRATADA — ${esc([ct.endereco, ct.bairro, ct.cidade && `${ct.cidade}/${ct.estado}`].filter(Boolean).join(', '))}<br>
