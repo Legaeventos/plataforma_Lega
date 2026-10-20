@@ -1,4 +1,4 @@
-import { getSession, loadRemoteState, saveRemoteState } from './supabase.js';
+import { getSession, refreshSession, loadRemoteState, saveRemoteState } from './supabase.js';
 import { mergeState, deepEqual } from './merge.js';
 
 // Sincronização do estado compartilhado (v1.1.8)
@@ -85,8 +85,8 @@ export async function syncNow(){
   if(!syncEnabled)return {ok:false,reason:'disabled'};
   if(running){again=true;return running}
   running=(async()=>{
-    try{const r=await syncRound();safeSet('lega.sync.info',JSON.stringify({em:new Date().toISOString(),ok:true}));emit('synced',new Date().toISOString());if(r.pendente)scheduleSync(300);return {ok:true}}
-    catch(err){safeSet('lega.sync.info',JSON.stringify({em:new Date().toISOString(),ok:false,erro:String(err?.message||err)}));markPendingLocal();emit('offline',err.message);return {ok:false,reason:'offline',error:err}}
+    try{let r;try{r=await syncRound()}catch(err){if(err?.code!=='AUTH')throw err;const nova=await refreshSession();if(!nova)throw err;r=await syncRound()}safeSet('lega.sync.info',JSON.stringify({em:new Date().toISOString(),ok:true}));emit('synced',new Date().toISOString());if(r.pendente)scheduleSync(300);return {ok:true}}
+    catch(err){if(err?.code==='AUTH'||/Sessão indisponível/.test(String(err?.message)))window.dispatchEvent(new CustomEvent('lega:auth-expired'));safeSet('lega.sync.info',JSON.stringify({em:new Date().toISOString(),ok:false,erro:err?.code==='AUTH'?'Login expirado — clique em Sair e entre novamente (os dados deste computador não são apagados).':String(err?.message||err)}));markPendingLocal();emit('offline',err.message);return {ok:false,reason:'offline',error:err}}
     finally{running=null;if(again){again=false;scheduleSync(200)}}
   })();
   return running;

@@ -1,3 +1,8 @@
+# v1.1.12 — Login expirado
+
+- Quando o login expira (erro 401), a plataforma tenta renovar sozinha; se não conseguir, mostra o aviso "Seu login expirou" com o botão "Entrar novamente". Os dados do computador são preservados e enviados à nuvem logo após entrar.
+- Antes, o erro ficava silencioso e o computador deixava de sincronizar sem avisar.
+
 # v1.1.11 — Horário excedente
 
 - Contrato: tolerância de 15 minutos sem cobrança; depois, multa de 10% do valor total do contrato a cada fração de 15 minutos excedentes (valor em reais impresso no contrato).

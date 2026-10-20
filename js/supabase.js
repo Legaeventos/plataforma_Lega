@@ -31,10 +31,20 @@ export async function getSession(){
   if(!s.refresh_token)return null;
   try{
     const r=await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`,{method:'POST',headers:{'apikey':SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:s.refresh_token})});
+    if(r.status===400||r.status===401||r.status===403)return null; // login inválido: pedir para entrar de novo
     if(!r.ok)throw new Error('refresh');
     s=await r.json();saveSession(s);return s;
   }catch{return readSession()}
 }
+// Força a renovação do acesso (usado quando o Supabase responde 401).
+export async function refreshSession(){
+  const s=readSession();if(!s?.refresh_token)return null;
+  try{
+    const r=await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`,{method:'POST',headers:{'apikey':SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:s.refresh_token})});
+    if(!r.ok)return null;const n=await r.json();saveSession(n);return n;
+  }catch{return null}
+}
+function authError(msg){const e=new Error(msg);e.code='AUTH';return e}
 
 export async function getProfile(session){
   const uid=session?.user?.id;if(!uid)return null;
@@ -45,6 +55,7 @@ export async function getProfile(session){
 
 export async function loadRemoteState(session){
   const r=await fetch(`${SUPABASE_URL}/rest/v1/lega_app_state?id=eq.principal&select=dados,atualizado_em`,{cache:'no-store',headers:jsonHeaders(session.access_token)});
+  if(r.status===401||r.status===403)throw authError('Sessão expirada');
   if(!r.ok)throw new Error(`Falha ao carregar dados (${r.status}).`);
   const rows=await r.json();return rows?.[0]||{dados:{},atualizado_em:null};
 }
@@ -56,6 +67,7 @@ export async function saveRemoteState(session,dados,expectedVersion){
   const novo=new Date().toISOString();
   const filtro=expectedVersion===undefined?'':(expectedVersion?`&atualizado_em=eq.${encodeURIComponent(expectedVersion)}`:'&atualizado_em=is.null');
   const r=await fetch(`${SUPABASE_URL}/rest/v1/lega_app_state?id=eq.principal${filtro}&select=atualizado_em`,{method:'PATCH',cache:'no-store',headers:{...jsonHeaders(session.access_token),'Prefer':'return=representation'},body:JSON.stringify({dados,atualizado_por:session.user.id,atualizado_em:novo})});
+  if(r.status===401||r.status===403)throw authError('Sessão expirada');
   if(!r.ok){const txt=await r.text().catch(()=>'');throw new Error(`Falha ao sincronizar (${r.status}) ${txt}`)}
   const rows=await r.json().catch(()=>[]);
   if(!Array.isArray(rows)||!rows.length)return {conflict:true};

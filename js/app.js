@@ -45,7 +45,7 @@ document.addEventListener('click',async e=>{
 menuButton.addEventListener('click',()=>{sidebar.classList.toggle('open');backdrop.classList.toggle('show')});backdrop.addEventListener('click',closeMenu);
 window.addEventListener('hashchange',()=>{if(!shell.hidden)navigate(location.hash.slice(1)||'dashboard')});
 window.addEventListener('lega:sync-status',e=>{const el=document.querySelector('#syncStatus');if(!el)return;const s=e.detail.status;el.dataset.status=s;el.title=s==='synced'?'Dados sincronizados':s==='saving'?'Salvando no Supabase…':s==='offline'?'Sem sincronização no momento; os dados ficam salvos neste aparelho.':'Carregando dados…';if(refreshPending&&s==='synced'){markRefresh(true);return}el.textContent=s==='synced'?'✓':s==='saving'?'↻':s==='offline'?'!':'…'});
-loginForm?.addEventListener('submit',async e=>{e.preventDefault();const btn=loginForm.querySelector('button');btn.disabled=true;setAuthMessage('Entrando…');try{const fd=new FormData(loginForm);const session=await signIn(String(fd.get('email')||'').trim(),String(fd.get('password')||''));await resolveIdentity(session);await hydrateFromCloud();renderUser();showApp();navigate(location.hash.slice(1)||'dashboard')}catch(err){setAuthMessage(err.message||'Não foi possível entrar.',true)}finally{btn.disabled=false}});
+loginForm?.addEventListener('submit',async e=>{e.preventDefault();const btn=loginForm.querySelector('button');btn.disabled=true;setAuthMessage('Entrando…');try{const fd=new FormData(loginForm);const session=await signIn(String(fd.get('email')||'').trim(),String(fd.get('password')||''));document.querySelector('#authBanner')?.remove();await resolveIdentity(session);await hydrateFromCloud();renderUser();showApp();navigate(location.hash.slice(1)||'dashboard')}catch(err){setAuthMessage(err.message||'Não foi possível entrar.',true)}finally{btn.disabled=false}});
 
 
 // --- Novidades de outro aparelho ------------------------------------------
@@ -86,6 +86,14 @@ function showUpdateBanner(version){
   bar.querySelector('button').onclick=applyUpdate;document.body.appendChild(bar);
 }
 window.addEventListener('beforeunload',()=>{flushSync()});
+// --- Login expirado ----------------------------------------------------------
+window.addEventListener('lega:auth-expired',()=>{
+  if(document.querySelector('#authBanner'))return;
+  const bar=document.createElement('div');bar.id='authBanner';bar.className='update-banner';
+  bar.innerHTML='<span>Seu login expirou e os dados deste computador não estão sendo enviados. Nada foi apagado.</span><button class="btn btn-primary" type="button">Entrar novamente</button>';
+  bar.querySelector('button').onclick=()=>{bar.remove();setAuthMessage('Entre novamente para continuar sincronizando. Os dados deste computador estão preservados.');showLogin()};
+  document.body.appendChild(bar);
+});
 
 bootstrap();
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(r=>r.update().catch(()=>{})).catch(console.warn));let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded||editing())return;reloaded=true;location.reload()})}
