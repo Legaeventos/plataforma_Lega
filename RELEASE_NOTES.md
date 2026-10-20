@@ -1,3 +1,7 @@
+# v1.1.11 — Horário excedente
+
+- Contrato: tolerância de 15 minutos sem cobrança; depois, multa de 10% do valor total do contrato a cada fração de 15 minutos excedentes (valor em reais impresso no contrato).
+
 # v1.1.10 — Tipo do evento
 
 - Contrato: o quadro do evento mostra apenas o nome do evento (antes juntava o "Tipo do evento" entre parênteses, ex.: "Formatura (Aniversário infantil)").

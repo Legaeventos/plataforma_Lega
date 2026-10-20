@@ -389,8 +389,6 @@ export function contractHTML({ snap, eventId, calc, cfg, rascunho = false }) {
   const dentroDoPrazo = !limite || !ultimoVenc || ultimoVenc <= limite;
   const dataContrato = snap.createdAt ? new Date(snap.createdAt) : new Date();
   const dataExtenso = dataContrato.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
-  const valorHora = cfg?.permiteHoraExtra && Number(cfg?.valorHoraExtra) > 0 ? Number(cfg.valorHoraExtra) : (duracao ? valorContrato / duracao : 0);
-  const fracao15 = round2(valorHora / 4);
   const autorizaImagem = snap.autorizaImagem !== 'nao';
   const tabela = cronograma.length
     ? `<table class="crono"><thead><tr><th>Pagamento</th><th>Vencimento</th><th>Valor</th><th>Forma</th></tr></thead><tbody>${cronograma.map(x => `<tr><td>${esc(x.descricao)}</td><td>${dateBR(x.vencimento)}</td><td>${money(x.valor)}</td><td>${esc(x.forma || 'A combinar')}</td></tr>`).join('')}</tbody><tfoot><tr><td colspan="2"><b>Total</b></td><td colspan="2"><b>${money(cronograma.reduce((s, x) => s + x.valor, 0))}</b></td></tr></tfoot></table>`
@@ -470,7 +468,7 @@ export function contractHTML({ snap, eventId, calc, cfg, rascunho = false }) {
   <p class="clausula"><b>Parágrafo quarto:</b> São isentos de pagamento o(a) aniversariante e as crianças de 0 (zero) a 3 (três) anos e 11 (onze) meses de idade na data do evento.</p>
 
   <h2>Cláusula ${cl()} — Da duração e do horário</h2>
-  <p class="clausula">O evento terá duração de ${duracao} (${extensoInteiro(duracao)}) horas, com tolerância de 15 (quinze) minutos para a saída dos convidados. Ultrapassada a tolerância, será cobrado o valor de <b>${money(fracao15)}</b> por fração de 15 (quinze) minutos excedentes, correspondente à hora ${cfg?.permiteHoraExtra ? 'extra do pacote' : 'proporcional do evento'}, a ser pago ao final do evento.</p>
+  <p class="clausula">O evento terá duração de ${duracao} (${extensoInteiro(duracao)}) horas, com tolerância de 15 (quinze) minutos para a saída dos convidados, sem cobrança. Ultrapassada a tolerância, será cobrada multa de 10% (dez por cento) do valor total do contrato — <b>${money(round2(valorContrato * 0.10))}</b> — para cada fração de 15 (quinze) minutos excedentes, a ser paga ao final do evento.</p>
   <p class="clausula"><b>Parágrafo único:</b> ${cfg?.permiteHoraExtra ? `A contratação antecipada de hora extra poderá ser feita até <b>${dataHoraExtra}</b>, pelo valor do pacote (${money(cfg.valorHoraExtra)} por hora), mediante aditivo ou registro no checklist.` : 'O pacote contratado não prevê contratação antecipada de hora extra.'}</p>
 
   <h2>Cláusula ${cl()} — Das bebidas alcoólicas</h2>
