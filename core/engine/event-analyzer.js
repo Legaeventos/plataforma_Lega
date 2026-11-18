@@ -89,6 +89,7 @@ export function analyzeEvent(event = {}, quote = null, options = {}) {
 
   if (!hasQuote) return result('Contato', 'Criar o primeiro orçamento', ['Criar orçamento']);
   if (event.status === 'realizado') return result('Evento encerrado', 'Nenhuma ação pendente', []);
+  if (event.status === 'perdido') return result('Não fechou', 'Nenhuma ação pendente', []);
 
   if (occurred) {
     const pending = [];

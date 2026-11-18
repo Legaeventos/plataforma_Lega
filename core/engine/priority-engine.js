@@ -71,7 +71,7 @@ function scoreFor(item, action, index = 0) {
  */
 export function buildPriorities(items = []) {
   return items
-    .filter(item => item?.event?.status !== 'realizado')
+    .filter(item => !['realizado', 'perdido'].includes(item?.event?.status))
     .flatMap(item => {
       const analysis = item.analysis || {};
       const actions = [];

@@ -572,6 +572,6 @@ export function signaturePanel(versao, cliente = {}) {
 export function signatureSummary(versao) {
   const a = versao?.assinatura;
   if (!a) return '';
-  const metodo = a.metodo === 'govbr' ? 'Assinatura eletrônica gov.br' : a.metodo === 'presencial' ? 'Assinatura manuscrita (papel)' : 'Assinatura registrada';
+  const metodo = a.metodo === 'govbr' ? 'Assinatura eletrônica gov.br' : a.metodo === 'presencial' ? 'Assinatura manuscrita (papel)' : a.metodo === 'externo' ? 'Contrato feito fora da plataforma' : 'Assinatura registrada';
   return `<div class="gov-summary"><strong>${metodo}</strong>${a.contratanteEm ? `<span>Contratante: ${stamp(a.contratanteEm)}</span>` : ''}${a.contratadaEm ? `<span>Contratada: ${stamp(a.contratadaEm)}</span>` : ''}${a.validadoEm ? `<span>Conferido no ITI: ${stamp(a.validadoEm)}</span>` : ''}${a.arquivo ? `<span>Arquivo: ${esc(a.arquivo.nome)}</span><code>SHA-256: ${esc(a.arquivo.sha256)}</code>` : ''}</div>`;
 }

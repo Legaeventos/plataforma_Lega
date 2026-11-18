@@ -7,6 +7,7 @@
 // balanço) continuam no sistema antigo nesta fase.
 
 import * as banco from './banco.js';
+import { readJSON } from '../../js/storage.js';
 import {
   definirDados, definirMostrarValores, mostrandoValores,
   formatarMoeda, formatarNumero, formatarData, hojeInputDate, escapeHtml, obterProdutoPorId,
@@ -144,7 +145,9 @@ function compraConsolidada(horizonte) {
 }
 
 // ------------------------------------------------------------------ telas
-const ABAS = [['painel', 'Painel'], ['estoque', 'Estoque'], ['eventos', 'Eventos'], ['compras', 'Sugestão de compra']];
+const ABAS_BASE = [['painel', 'Painel'], ['estoque', 'Estoque'], ['eventos', 'Eventos'], ['compras', 'Sugestão de compra']];
+const temEstoqueInterno = () => (readJSON('lega.estoque.produtos', []) || []).length > 0;
+const abas = () => temEstoqueInterno() ? [...ABAS_BASE, ['conferencia', 'Conferência com o estoque antigo']] : ABAS_BASE;
 const kpi = (titulo, valor, extra = '') => `<div class="panel"><small>${titulo}</small><strong>${valor}</strong>${extra}</div>`;
 const OPCOES_PERIODO = [['tudo', 'Todo o período'], ['mes', 'Este mês'], ['mes_passado', 'Mês passado'], ['3meses', 'Últimos 3 meses'], ['6meses', 'Últimos 6 meses'], ['ano', 'Este ano'], ['personalizado', 'Personalizado']];
 
@@ -264,6 +267,60 @@ function telaCompras() {
   <div id="bbResultadoSim">${resultadoSim}</div></section>`;
 }
 
+
+// ------------------------------------------- conferência com o estoque antigo da plataforma
+// O menu "Estoque" antigo guarda um estoque interno (importado uma vez do
+// sistema de bebidas) que não é atualizado pelo controlebebidaslega. Esta
+// tela compara esse estoque com o real e lista o que foi lançado SÓ na
+// plataforma, para decidir o que precisa ser lançado no Controle de Bebidas.
+const normNome = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+function dadosConferencia() {
+  const intProdutos = readJSON('lega.estoque.produtos', []) || [];
+  const intLotes = readJSON('lega.estoque.lotes', []) || [];
+  const intMov = readJSON('lega.estoque.movimentacoes', []) || [];
+  const eventosPlat = readJSON('lega.eventos', []) || [];
+  const porId = new Map(dados.produtos.map(p => [String(p.id), p]));
+  const porNome = new Map(dados.produtos.map(p => [normNome(p.nome), p]));
+  const estoqueReal = new Map(dados.estoque.map(e => [String(e.produto_id), e]));
+  const correspondente = ip => (ip.origemId != null && porId.get(String(ip.origemId))) || porNome.get(normNome(ip.nome)) || null;
+  // lançamentos feitos só na plataforma
+  const lanc = [];
+  intMov.filter(m => m.tipo === 'entrada').forEach(m => lanc.push({ data: m.data || m.createdAt, tipo: 'Entrada no estoque da plataforma', origem: 'Menu Estoque', produtoId: m.produtoId, produto: m.produto, quantidade: Number(m.quantidade || 0), sinal: 1 }));
+  eventosPlat.forEach(ev => {
+    const q = (ev.orcamentos || []).find(o => o.id === ev.orcamentoEscolhidoId) || (ev.orcamentos || []).at(-1) || {};
+    const nome = [q.nome || q.tipo, q.cliente].filter(Boolean).join(' · ') || 'Evento';
+    (ev.consumos || []).forEach(c => lanc.push({ data: c.createdAt, tipo: 'Consumo lançado no evento', origem: `${nome}${q.data ? ' (' + formatarData(q.data) + ')' : ''}`, produtoId: c.produtoId, produto: c.produto, quantidade: Number(c.quantidade || 0), sinal: -1, valorVenda: Number(c.valorVenda || 0) }));
+  });
+  lanc.sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')));
+  const linhas = intProdutos.map(ip => {
+    const saldoPlat = intLotes.filter(l => l.produtoId === ip.id).reduce((s, l) => s + Number(l.quantidadeDisponivel || 0), 0);
+    const real = correspondente(ip);
+    const qtdReal = real ? Number(estoqueReal.get(String(real.id))?.quantidade || 0) : null;
+    const meus = lanc.filter(l => l.produtoId === ip.id);
+    const entradas = meus.filter(l => l.sinal > 0).reduce((s, l) => s + l.quantidade, 0);
+    const saidas = meus.filter(l => l.sinal < 0).reduce((s, l) => s + l.quantidade, 0);
+    return { ip, real, saldoPlat, qtdReal, diferenca: qtdReal == null ? null : saldoPlat - qtdReal, entradas, saidas };
+  }).sort((a, b) => Math.abs(b.diferenca ?? 1e9) - Math.abs(a.diferenca ?? 1e9) || String(a.ip.nome).localeCompare(String(b.ip.nome), 'pt-BR'));
+  return { linhas, lanc };
+}
+function csv(linhas) { return linhas.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(';')).join('\r\n'); }
+function telaConferencia() {
+  const { linhas, lanc } = dadosConferencia();
+  const casados = linhas.filter(l => l.real).length;
+  const comDif = linhas.filter(l => l.diferenca != null && Math.abs(l.diferenca) > 1e-9).length;
+  const fmtDif = v => v == null ? '<span class="bb-muted">—</span>' : Math.abs(v) < 1e-9 ? '<span class="badge badge-ativo">Igual</span>' : `<span class="badge ${v > 0 ? 'badge-alerta' : 'badge-inativo'}">${v > 0 ? '+' : ''}${formatarNumero(v, 0)}</span>`;
+  return `<section class="panel bb-alerta"><div class="panel-header"><div><h3>Por que existem diferenças?</h3><p>O menu <b>Estoque</b> antigo da plataforma recebeu os produtos do Controle de Bebidas <b>uma única vez</b> (importação) e depois ficou separado: o que entrou e saiu no controlebebidaslega não chegou nele, e o que foi lançado nele não chegou ao Controle de Bebidas. O estoque que vale é o do <b>Controle de Bebidas</b> (aba Estoque deste menu). Use esta tela para ver se algo lançado só na plataforma ainda precisa ser lançado lá. Nada aqui altera dados.</p></div></div></section>
+  <section class="finance-kpis bb-kpis">${kpi('Produtos no estoque antigo', formatarNumero(linhas.length, 0))}${kpi('Encontrados no Controle de Bebidas', formatarNumero(casados, 0))}${kpi('Com quantidade diferente', formatarNumero(comDif, 0))}${kpi('Lançamentos feitos só na plataforma', formatarNumero(lanc.length, 0))}</section>
+  <section class="panel"><div class="panel-header"><div><h3>Lançamentos feitos só na plataforma</h3><p>Entradas pelo menu Estoque antigo e consumos lançados na aba de um evento da plataforma. Confira se cada um também foi lançado no controlebebidaslega; se não foi, lance lá (é o estoque oficial).</p></div><button class="btn btn-ghost" type="button" data-bb="csv-lanc" ${lanc.length ? '' : 'disabled'}>Baixar planilha</button></div>
+  <div class="table-wrap"><table class="event-table bb-table"><thead><tr><th>Data</th><th>Tipo</th><th>Onde</th><th>Produto</th><th>Quantidade</th></tr></thead><tbody>${lanc.length ? lanc.map(l => `<tr><td>${l.data ? formatarData(dataSomenteDia(l.data)) : '-'}</td><td>${l.tipo}</td><td>${escapeHtml(l.origem)}</td><td>${escapeHtml(l.produto || '')}</td><td>${l.sinal > 0 ? '+' : '−'}${formatarNumero(l.quantidade, 0)}</td></tr>`).join('') : '<tr><td colspan="5" class="empty-state">Nenhum lançamento feito só na plataforma.</td></tr>'}</tbody></table></div></section>
+  <section class="panel"><div class="panel-header"><div><h3>Produto a produto</h3><p>Saldo do estoque antigo da plataforma × estoque real do Controle de Bebidas. Diferença positiva: a plataforma mostra mais do que existe; negativa: mostra menos.</p></div><button class="btn btn-ghost" type="button" data-bb="csv-prod">Baixar planilha</button></div>
+  <div class="table-wrap"><table class="event-table bb-table"><thead><tr><th>Produto (plataforma)</th><th>No Controle de Bebidas</th><th>Saldo na plataforma</th><th>Estoque real</th><th>Diferença</th><th>Lançado só na plataforma</th></tr></thead><tbody>${linhas.map(l => `<tr><td>${escapeHtml(l.ip.nome)}</td><td>${l.real ? escapeHtml(l.real.nome) : '<span class="badge badge-inativo">Não encontrado</span>'}</td><td>${formatarNumero(l.saldoPlat, 0)}</td><td>${l.qtdReal == null ? '—' : formatarNumero(l.qtdReal, 0)}</td><td>${fmtDif(l.diferenca)}</td><td>${l.entradas || l.saidas ? `${l.entradas ? `+${formatarNumero(l.entradas, 0)} entrada(s)` : ''}${l.entradas && l.saidas ? ' · ' : ''}${l.saidas ? `−${formatarNumero(l.saidas, 0)} em evento(s)` : ''}` : '<span class="bb-muted">nada</span>'}</td></tr>`).join('')}</tbody></table></div></section>`;
+}
+function baixarCsv(nome, conteudo) {
+  const blob = new Blob(['﻿' + conteudo], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nome; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
 function telaLogin(msg = '') {
   let emailPlataforma = '';
   try { emailPlataforma = JSON.parse(localStorage.getItem('lega.user') || '{}').email || ''; } catch { }
@@ -278,15 +335,18 @@ function conteudo() {
   if (ui.aba === 'estoque') return telaEstoque();
   if (ui.aba === 'eventos') return telaEventos();
   if (ui.aba === 'compras') return telaCompras();
+  if (ui.aba === 'conferencia') return telaConferencia();
   return telaPainel();
 }
 
 export function render() {
+  try { const a = JSON.parse(localStorage.getItem(UI_KEY) || '{}').aba; if (a) ui.aba = a; } catch { }
+  if (!abas().some(([k]) => k === ui.aba)) ui.aba = 'painel';
   const conectado = banco.temSessao();
   return `<div class="page-grid bebidas-module">
   <section class="events-header"><div><span class="eyebrow">CONTROLE DE BEBIDAS</span><h2>Bebidas</h2><p>Estoque, consumo e sugestões de compra, lidos direto do Controle de Bebidas. Os dois sistemas mostram os mesmos dados.</p></div>
   ${conectado ? `<div class="bb-head-actions"><span class="bb-sub">${dados ? `Atualizado às ${dados.lidoEm.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''}</span><button class="btn btn-ghost" type="button" data-bb="recarregar">↻ Atualizar</button><button class="btn btn-ghost" type="button" data-bb="sair" title="Desconectar do banco de bebidas neste computador">Desconectar</button></div>` : ''}</section>
-  ${conectado ? `<nav class="bb-tabs">${ABAS.map(([k, t]) => `<button type="button" class="${ui.aba === k ? 'active' : ''}" data-bb-aba="${k}">${t}</button>`).join('')}</nav>` : ''}
+  ${conectado ? `<nav class="bb-tabs">${abas().map(([k, t]) => `<button type="button" class="${ui.aba === k ? 'active' : ''}" data-bb-aba="${k}">${t}</button>`).join('')}</nav>` : ''}
   <div id="bbConteudo">${conteudo()}</div></div>`;
 }
 
@@ -348,6 +408,8 @@ function ligar(root) {
       desenhar(root);
     });
   }
+  q('[data-bb="csv-lanc"]')?.addEventListener('click', () => { const { lanc } = dadosConferencia(); baixarCsv('lancamentos-so-na-plataforma.csv', csv([['Data', 'Tipo', 'Onde', 'Produto', 'Quantidade'], ...lanc.map(l => [l.data ? formatarData(dataSomenteDia(l.data)) : '', l.tipo, l.origem, l.produto, (l.sinal > 0 ? '' : '-') + l.quantidade])])); });
+  q('[data-bb="csv-prod"]')?.addEventListener('click', () => { const { linhas } = dadosConferencia(); baixarCsv('conferencia-estoque.csv', csv([['Produto (plataforma)', 'No Controle de Bebidas', 'Saldo na plataforma', 'Estoque real', 'Diferença', 'Entradas só na plataforma', 'Saídas em eventos da plataforma'], ...linhas.map(l => [l.ip.nome, l.real?.nome || 'Não encontrado', l.saldoPlat, l.qtdReal ?? '', l.diferenca ?? '', l.entradas, l.saidas])])); });
   q('[data-bb="limpar-sim"]')?.addEventListener('click', () => { simulacao = null; desenhar(root); });
   q('[data-bb="pdf-sim"]')?.addEventListener('click', () => {
     const s = simulacao; if (!s?.linhas?.length) return;

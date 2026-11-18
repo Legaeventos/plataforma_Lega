@@ -9,9 +9,9 @@ const dateISO=(y,m,d)=>`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart
 const dateBR=v=>{if(!v)return'—';const[y,m,d]=String(v).split('-').map(Number);return new Intl.DateTimeFormat('pt-BR').format(new Date(y,m-1,d));};
 const selectedQuote=e=>e?.orcamentos?.find(q=>q.id===e.orcamentoEscolhidoId)||e?.orcamentos?.at(-1)||null;
 const getEvents=()=>readJSON(EVENTS_KEY,[]);
-const statusLabel=s=>({orcamento:'Orçamento',aceito:'Aceito',contrato:'Contrato',entrada:'Entrada paga',preparacao:'Preparação',pronto:'Pronto',realizado:'Realizado'})[s]||s||'Evento';
+const statusLabel=s=>({orcamento:'Orçamento',aceito:'Aceito',contrato:'Contrato',entrada:'Entrada paga',preparacao:'Preparação',pronto:'Pronto',realizado:'Realizado',perdido:'Não fechou'})[s]||s||'Evento';
 
-function monthEvents(){return getEvents().map(event=>({event,quote:selectedQuote(event)})).filter(x=>x.quote?.data&&Number(x.quote.data.slice(0,4))===state.year&&Number(x.quote.data.slice(5,7))===state.month+1);}
+function monthEvents(){return getEvents().filter(e=>e.status!=='perdido').map(event=>({event,quote:selectedQuote(event)})).filter(x=>x.quote?.data&&Number(x.quote.data.slice(0,4))===state.year&&Number(x.quote.data.slice(5,7))===state.month+1);}
 function calendar(){
   const rows=monthEvents();
   const first=new Date(state.year,state.month,1);const days=new Date(state.year,state.month+1,0).getDate();const offset=first.getDay();

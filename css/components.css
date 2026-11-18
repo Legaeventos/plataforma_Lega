@@ -186,3 +186,40 @@
 .bb-h4{margin:16px 0 4px}
 .bb-login{max-width:640px}
 .bebidas-module [hidden]{display:none!important}
+
+/* v1.3.0 — guia do evento, duplicados e encerramento */
+.next-step{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 18px;margin:0 0 16px;border-radius:18px;background:linear-gradient(120deg,#f3ecfa,#eef8f1);border:1px solid #e2d6ee}
+.next-step small{display:block;font-size:.7rem;letter-spacing:.08em;font-weight:800;color:var(--purple,#6f3b91)}
+.next-step strong{display:block;font-size:1.05rem;margin:2px 0}
+.next-step span{display:block;color:var(--text-muted,#666);font-size:.85rem}
+.guide-card{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;border:2px solid #d9c8ea;background:#fcf9fe}
+.guide-card h3{margin:4px 0 6px}.guide-card p{margin:0;color:var(--text-muted,#555);max-width:720px}
+.guide-card--muted{border-color:#e6e0d4;background:#faf8f3}
+.guide-card__actions{display:flex;gap:10px;flex-wrap:wrap}
+.guide-card form{flex-basis:100%}
+.muted-small{font-size:.78rem;color:var(--text-muted,#777)}
+.lega-modal{position:fixed;inset:0;z-index:2000;background:rgba(40,20,55,.45);display:flex;align-items:center;justify-content:center;padding:16px}
+.lega-modal__card{background:#fff;border-radius:22px;max-width:560px;width:100%;padding:24px;box-shadow:0 24px 60px rgba(0,0,0,.25);max-height:90vh;overflow:auto}
+.lega-modal__card h2{margin:6px 0 8px}.lega-modal__card p{color:var(--text-muted,#555)}
+.lega-modal__options{display:grid;gap:10px;margin:16px 0}
+.lega-option{display:block;text-align:left;width:100%;padding:14px 16px;border-radius:16px;border:2px solid #e2d6ee;background:#fcf9fe;font:inherit;cursor:pointer}
+.lega-option:hover{border-color:var(--purple,#6f3b91)}
+.lega-option strong{display:block;color:var(--purple,#6f3b91)}.lega-option small{color:var(--text-muted,#777)}
+.lega-option--ghost{background:#fff;border-style:dashed}
+.result-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:8px 0 14px}
+.result-card{border:1px solid var(--border,#e5dcec);border-radius:18px;padding:14px 16px;background:#fff}
+.result-card small{display:block;font-weight:800;color:var(--text-muted,#777);font-size:.75rem;text-transform:uppercase;letter-spacing:.05em}
+.result-card strong{display:block;font-size:1.5rem;margin:4px 0}
+.result-card span{font-size:.8rem;color:var(--text-muted,#666)}
+.result-card.pos strong{color:#14753d}.result-card.neg strong{color:#a32020}
+.result-details{margin:0 0 14px}.result-details summary{cursor:pointer;font-weight:700;color:var(--purple,#6f3b91)}
+.closure-checks{display:grid;gap:8px;margin:6px 0 18px}
+.closure-check{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;border:1px solid var(--border,#e5dcec);background:#fff}
+.closure-check>span{flex:none;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900}
+.closure-check.ok>span{background:#e3f7ea;color:#14753d}.closure-check.warn>span{background:#fff4d6;color:#8a5a00}
+.closure-check>div{flex:1}.closure-check strong{display:block}.closure-check small{color:var(--text-muted,#666)}
+@media(max-width:720px){.next-step{flex-direction:column;align-items:stretch}.closure-check{flex-wrap:wrap}}
+.budget-status--perdido{background:#f1ede6;color:#7a6a4f}
+.lega-modal .form-actions{position:static;background:none;box-shadow:none;padding:0;margin:0}
+@keyframes legaFlash{0%,100%{box-shadow:0 0 0 0 rgba(111,59,145,0)}30%{box-shadow:0 0 0 6px rgba(111,59,145,.35)}}
+.guide-card.flash{animation:legaFlash 1.2s ease 2}

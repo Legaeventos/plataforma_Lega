@@ -91,7 +91,7 @@ function healthMeta(status) {
 }
 
 function progressFor(event) {
-  return ({ orcamento: 8, aceito: 22, contrato: 38, entrada: 54, preparacao: 70, pronto: 88, realizado: 100 })[event?.status] || 8;
+  return ({ orcamento: 8, aceito: 22, contrato: 38, entrada: 54, preparacao: 70, pronto: 88, realizado: 100, perdido: 0 })[event?.status] || 8;
 }
 
 function operationalData() {
@@ -107,11 +107,11 @@ function operationalData() {
     const total = eventValue(event, quote);
     const paid = eventReceived(event);
     const contracted = event?.status && event.status !== 'orcamento';
-    const receivable = contracted && event?.status !== 'realizado' ? Math.max(0, total - paid) : 0;
+    const receivable = contracted && !['realizado', 'perdido'].includes(event?.status) ? Math.max(0, total - paid) : 0;
     return { event, quote, analysis, date, total, paid, receivable };
   });
 
-  const active = events.filter(item => item.event.status !== 'realizado');
+  const active = events.filter(item => !['realizado', 'perdido'].includes(item.event.status));
   const future = active
     .filter(item => item.date && item.date >= today)
     .sort((a, b) => a.date - b.date);

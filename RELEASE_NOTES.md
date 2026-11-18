@@ -1,3 +1,27 @@
+# v1.3.0 — Evento completo de ponta a ponta
+
+**Orçamento da mesma cliente em outra data**
+- Ao criar um orçamento para uma cliente que já tem evento em aberto, a plataforma pergunta: é nova versão do mesmo evento (outra data/condição) ou outra festa? Assim a festa não aparece em duas datas.
+- Registros duplicados que já existem: botão "Juntar com …" na aba Orçamento.
+
+**Destravar eventos**
+- Contrato feito fora da plataforma: registre como "contrato externo" (data e valor) e siga para os pagamentos.
+- Festas cuja data já passou: a plataforma pergunta se aconteceram. "Sim" leva direto ao encerramento; "Não fechou" arquiva o orçamento (sai das pendências e pode ser reaberto).
+- Financeiro, equipe e encerramento liberados para festas que já aconteceram, mesmo sem contrato/entrada lançados.
+
+**Encerramento com resultado real**
+- Receitas (contratado + extras), custos (equipe, despesas da festa por categoria, consumo) e resultado com margem; quanto falta receber.
+- Conferência item a item com botões para completar o que falta; nada bloqueia o encerramento.
+- Despesas da festa com categoria: bolo e doces, decoração personalizada, alimentação, bebidas, equipe extra, aluguel de itens, outros.
+
+**Guia de próximos passos**
+- Em todas as telas do evento, uma faixa "Próximo passo" mostra o que fazer a seguir, com botão "Ir agora".
+
+# v1.2.2 — Conferência com o estoque antigo
+
+- Bebidas → nova aba "Conferência com o estoque antigo": compara, produto a produto, o estoque interno antigo da plataforma com o estoque real do Controle de Bebidas e lista o que foi lançado só na plataforma (entradas pelo menu Estoque e consumos lançados em eventos), com planilhas para baixar. Somente leitura.
+- Menu Estoque antigo: aviso de que está desatualizado, com atalho para a conferência.
+
 # v1.2.1 — Ajustes da publicação do módulo Bebidas
 
 - Leitura do banco de bebidas em páginas por offset/limit (mais compatível com os navegadores).
