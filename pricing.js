@@ -1,7 +1,7 @@
-// Fonte única dos pacotes padrão e das regras de reajuste de tabela de preços.
+// Fonte unica dos pacotes padrao e das regras de reajuste de tabela de precos.
 // Usado por modules/eventos e modules/configuracoes para que os dois nunca
-// divirjam (duração, hora extra, faixas de preço e composição do reajuste
-// anual precisam ser sempre os mesmos, não importa por qual tela a tabela
+// divirjam (duracao, hora extra, faixas de preco e composicao do reajuste
+// anual precisam ser sempre os mesmos, nao importa por qual tela a tabela
 // foi criada).
 
 export const CONFIG_PADRAO = {
@@ -49,8 +49,8 @@ export const CONFIG_PADRAO = {
 
 function nowISO(){return new Date().toISOString()}
 
-// Aplica um único reajuste percentual sobre uma tabela de origem,
-// preservando duração e demais campos que não são valores monetários.
+// Aplica um unico reajuste percentual sobre uma tabela de origem,
+// preservando duracao e demais campos que nao sao valores monetarios.
 export function applyPriceAdjustment(source, ano, reajuste = 10, arredondamento = 10) {
   const rate = 1 + Number(reajuste || 0) / 100;
   const round = Number(arredondamento || 0);
@@ -68,9 +68,9 @@ export function applyPriceAdjustment(source, ano, reajuste = 10, arredondamento 
 }
 
 // Cria a tabela de um ano futuro, compondo o reajuste ano a ano a partir da
-// última tabela existente — mesmo que anos intermediários estejam faltando
-// (ex.: só existe 2026 e criamos 2029: aplica 10% em 2027, depois em 2028,
-// depois em 2029, e não um salto único de 10%).
+// ultima tabela existente -- mesmo que anos intermediarios estejam faltando
+// (ex.: so existe 2026 e criamos 2029: aplica 10% em 2027, depois em 2028,
+// depois em 2029, e nao um salto unico de 10%).
 export function createPriceTableForYear(tabelas, ano, reajuste = 10, arredondamento = 10) {
   const ts = [...(tabelas || [])].sort((a, b) => a.ano - b.ano);
   if (!ts.length) return null;

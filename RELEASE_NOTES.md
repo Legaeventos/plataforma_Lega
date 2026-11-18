@@ -1,3 +1,17 @@
+# v1.2.0 — Controle de Bebidas dentro da Plataforma (fase 1)
+
+**Novo menu "Bebidas"**, conectado ao MESMO banco do controlebebidaslega (os dois sistemas funcionam em paralelo, com os mesmos dados):
+- **Painel:** produtos, itens em estoque, eventos, compras, total vendido, rolha, lucro dos eventos, estoque baixo/sem estoque, lotes vencendo; validade dos lotes; próximos eventos da agenda; desperdício de garrafas abertas; consumo médio de festas fechadas (com adesão / sem adesão / sem álcool), bebidas de adulto e venda avulsa. Filtro de período e "ocultar valores".
+- **Estoque:** quantidade, custo médio, valor, mínimo e situação de cada produto, com os lotes e validades.
+- **Eventos:** histórico de consumo de cada evento com vendido, custo pelos lotes (PEPS), rolha e resultado; itens e lotes usados.
+- **Sugestão de compra:** compra consolidada dos eventos agendados (7/15/30/60 dias ou todos) e simulador por evento, com PDF.
+- Os cálculos são os mesmos do sistema antigo (copiados sem alteração) e foram conferidos lado a lado: nenhuma diferença.
+- Login: usa o e-mail e senha do Controle de Bebidas; ao entrar na Plataforma, tenta conectar automaticamente com as mesmas credenciais.
+- Lançamentos (compras, consumo de evento, balanço, agenda) continuam no sistema antigo nesta fase.
+
+**Outros**
+- Aviso em português quando o navegador bloqueia os dados do site (em vez do erro técnico "Failed to read the 'localStorage'…").
+
 # v1.1.12 — Login expirado
 
 - Quando o login expira (erro 401), a plataforma tenta renovar sozinha; se não conseguir, mostra o aviso "Seu login expirou" com o botão "Entrar novamente". Os dados do computador são preservados e enviados à nuvem logo após entrar.
