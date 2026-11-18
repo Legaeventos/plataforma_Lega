@@ -20,7 +20,12 @@ async function resolveIdentity(session){
   const email=session?.user?.email||'';writeJSON('lega.user',{name:email.split('@')[0]||'Usuário',role:'Administrador',email});return true;
 }
 
+// --- Navegador bloqueando os dados do site (ex.: Edge com cookies bloqueados) ---
+const MSG_STORAGE='Este navegador está bloqueando os dados do site, e a Plataforma precisa deles para funcionar. Para liberar no Edge: clique no ícone à direita da barra de endereço e permita, ou vá em Configurações → Cookies e permissões de site → Gerenciar e excluir cookies e dados do site → ative "Permitir que os sites salvem e leiam dados de cookie" e adicione https://legaeventos.github.io em "Permitir". No Chrome: Configurações → Privacidade e segurança → Cookies de terceiros / Dados do site. Depois, feche e abra a aba de novo.';
+function storageBloqueado(){try{const k='__lega_teste__';localStorage.setItem(k,'1');localStorage.removeItem(k);return false}catch{return true}}
+function mensagemErro(err){const m=String(err?.message||err||'');return /localStorage|sessionStorage|Access is denied|SecurityError|The operation is insecure/i.test(m)?MSG_STORAGE:(m||'Não foi possível entrar.')}
 async function bootstrap(){
+  if(storageBloqueado()){showLogin();setAuthMessage(MSG_STORAGE,true);loginForm?.querySelector('button')?.setAttribute('disabled','');return}
   const session=await getSession();if(!session){showLogin();return}
   await resolveIdentity(session);
   const result=await hydrateFromCloud();if(!result.ok)enableCloudSync();checkVersion();setInterval(checkVersion,5*60*1000);
@@ -45,7 +50,7 @@ document.addEventListener('click',async e=>{
 menuButton.addEventListener('click',()=>{sidebar.classList.toggle('open');backdrop.classList.toggle('show')});backdrop.addEventListener('click',closeMenu);
 window.addEventListener('hashchange',()=>{if(!shell.hidden)navigate(location.hash.slice(1)||'dashboard')});
 window.addEventListener('lega:sync-status',e=>{const el=document.querySelector('#syncStatus');if(!el)return;const s=e.detail.status;el.dataset.status=s;el.title=s==='synced'?'Dados sincronizados':s==='saving'?'Salvando no Supabase…':s==='offline'?'Sem sincronização no momento; os dados ficam salvos neste aparelho.':'Carregando dados…';if(refreshPending&&s==='synced'){markRefresh(true);return}el.textContent=s==='synced'?'✓':s==='saving'?'↻':s==='offline'?'!':'…'});
-loginForm?.addEventListener('submit',async e=>{e.preventDefault();const btn=loginForm.querySelector('button');btn.disabled=true;setAuthMessage('Entrando…');try{const fd=new FormData(loginForm);const session=await signIn(String(fd.get('email')||'').trim(),String(fd.get('password')||''));document.querySelector('#authBanner')?.remove();await resolveIdentity(session);await hydrateFromCloud();renderUser();showApp();navigate(location.hash.slice(1)||'dashboard')}catch(err){setAuthMessage(err.message||'Não foi possível entrar.',true)}finally{btn.disabled=false}});
+loginForm?.addEventListener('submit',async e=>{e.preventDefault();const btn=loginForm.querySelector('button');btn.disabled=true;setAuthMessage('Entrando…');try{const fd=new FormData(loginForm);const email=String(fd.get('email')||'').trim(),senha=String(fd.get('password')||'');const session=await signIn(email,senha);document.querySelector('#authBanner')?.remove();import('../modules/bebidas/banco.js').then(b=>{if(!b.temSessao())return b.entrar(email,senha)}).catch(()=>{});await resolveIdentity(session);await hydrateFromCloud();renderUser();showApp();navigate(location.hash.slice(1)||'dashboard')}catch(err){setAuthMessage(mensagemErro(err),true)}finally{btn.disabled=false}});
 
 
 // --- Novidades de outro aparelho ------------------------------------------
@@ -79,11 +84,22 @@ async function applyUpdate(){
   location.reload();
 }
 function showUpdateBanner(version){
+  // Proteção contra recarregar sem parar: se já tentou atualizar para esta
+  // versão nesta aba e continua igual, a publicação no GitHub está incompleta.
+  let tentou='';try{tentou=sessionStorage.getItem('lega.update.tentou')||''}catch{}
+  if(tentou===version){mostrarAvisoPublicacao(version);return}
+  try{sessionStorage.setItem('lega.update.tentou',version)}catch{}
   if(!editing()){applyUpdate();return}
   if(document.querySelector('#updateBanner'))return;
   const bar=document.createElement('div');bar.id='updateBanner';bar.className='update-banner';
   bar.innerHTML=`<span>Nova versão da Plataforma (${version}) disponível.</span><button class="btn btn-primary" type="button">Atualizar agora</button>`;
   bar.querySelector('button').onclick=applyUpdate;document.body.appendChild(bar);
+}
+function mostrarAvisoPublicacao(version){
+  if(document.querySelector('#updateBanner'))return;
+  const bar=document.createElement('div');bar.id='updateBanner';bar.className='update-banner';
+  bar.innerHTML=`<span>O site anuncia a versão ${version}, mas os arquivos publicados ainda são da ${APP_VERSION}. A publicação no GitHub parece incompleta (arquivos fora das pastas).</span>`;
+  document.body.appendChild(bar);
 }
 window.addEventListener('beforeunload',()=>{flushSync()});
 // --- Login expirado ----------------------------------------------------------

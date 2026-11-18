@@ -143,3 +143,46 @@
 .sync-button.has-updates{background:#fff4d6;color:#8a5a00;border-color:#ecd08a;font-weight:900}
 .update-banner{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:1000;display:flex;align-items:center;gap:14px;padding:12px 14px 12px 18px;border-radius:18px;background:#2d153e;color:#fff;box-shadow:0 10px 30px rgba(0,0,0,.25);max-width:calc(100% - 32px)}
 .update-banner span{font-weight:700}
+
+/* v1.2.0 — módulo Bebidas */
+.bebidas-module .events-header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.bb-head-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.bb-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 14px}
+.bb-tabs button{border:1px solid var(--border,#e5dcec);background:#fff;border-radius:999px;padding:9px 16px;font:inherit;font-weight:700;color:var(--purple,#6f3b91);cursor:pointer}
+.bb-tabs button.active{background:var(--purple,#6f3b91);color:#fff;border-color:transparent}
+.bb-toolbar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin:0 0 12px}
+.bb-toolbar .field{display:flex;flex-direction:column;gap:4px;margin:0}
+.bb-toolbar .field span{font-size:.75rem;font-weight:700;color:var(--text-muted,#777)}
+.bb-toolbar input,.bb-toolbar select{border:1px solid var(--border,#e5dcec);border-radius:12px;padding:10px 12px;font:inherit;background:#fff;min-width:0}
+.bb-toolbar input[type=search]{flex:1;min-width:200px}
+.bb-sim input[type=number]{width:130px}
+.bb-custom{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.bb-check{display:flex;gap:8px;align-items:center;font-weight:600;padding:10px 0}
+.bb-check input{width:18px;height:18px;accent-color:var(--purple,#6f3b91)}
+.bb-sub{margin:0 0 14px;color:var(--text-muted,#666);font-size:.88rem}
+.bb-kpis{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))!important}
+.bb-kpis .panel strong{font-size:1.35rem}
+.bebidas-module .panel{margin-bottom:16px}
+.bb-table th,.bb-table td{vertical-align:top}
+.bb-center{text-align:center!important}
+.bb-click{cursor:pointer}.bb-click:hover td{background:#faf6fd}
+.bb-lotes>td{background:#fbf9fd}
+.bb-subtable{width:100%;border-collapse:collapse;font-size:.85rem}
+.bb-subtable th,.bb-subtable td{padding:6px 8px;border-bottom:1px solid #eee;text-align:left}
+.bebidas-module .lote-rotulo{font-size:.75rem;color:var(--text-muted,#777);margin-top:2px}
+.bebidas-module .empty-state{padding:16px;text-align:center;color:var(--text-muted,#777)}
+.bebidas-module .table-container{overflow:auto}
+.bebidas-module .table-container table{width:100%;border-collapse:collapse}
+.bebidas-module .table-container th,.bebidas-module .table-container td{padding:10px 12px;border-bottom:1px solid var(--border,#eee);text-align:left;vertical-align:top}
+.bebidas-module .table-container th{font-size:.78rem;text-transform:uppercase;letter-spacing:.03em;color:var(--text-muted,#777)}
+.bebidas-module .badge-ativo{background:#e3f7ea;color:#14753d}
+.bebidas-module .badge-inativo{background:#fde7e7;color:#a32020}
+.bebidas-module .badge-alerta{background:#fff4d6;color:#8a5a00}
+.bebidas-module .badge{display:inline-flex;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:800}
+.bb-alerta{border:2px solid #ecd08a}
+.bb-aviso{margin:0 0 12px;padding:10px 14px;border-radius:12px;background:#fff8e6;border:1px solid #ecd08a;color:#7a5600}
+.bb-muted{color:var(--text-muted,#999)}
+.bb-erro{color:#a32020;margin:12px 0 0}
+.bb-h4{margin:16px 0 4px}
+.bb-login{max-width:640px}
+.bebidas-module [hidden]{display:none!important}

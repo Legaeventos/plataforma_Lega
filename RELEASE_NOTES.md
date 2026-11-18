@@ -1,3 +1,8 @@
+# v1.2.1 — Ajustes da publicação do módulo Bebidas
+
+- Leitura do banco de bebidas em páginas por offset/limit (mais compatível com os navegadores).
+- Proteção contra a página recarregar sem parar quando a publicação no GitHub fica incompleta; mostra um aviso explicando.
+
 # v1.2.0 — Controle de Bebidas dentro da Plataforma (fase 1)
 
 **Novo menu "Bebidas"**, conectado ao MESMO banco do controlebebidaslega (os dois sistemas funcionam em paralelo, com os mesmos dados):
