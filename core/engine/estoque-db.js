@@ -158,6 +158,16 @@ export const MAPA_MIGRACAO = [
   ['eventos_agenda', 'est_agenda', r => ({ id: r.id, nome_evento: txt(r.nome_evento) || 'Evento', data: dia(r.data), adultos: inteiro(r.adultos), criancas: inteiro(r.criancas), tipo_evento: txt(r.tipo_evento) || 'fechada', alcoolico_adesao: bool(r.alcoolico_adesao), sem_alcool: bool(r.sem_alcool), observacao: txt(r.observacao), status: txt(r.status) || 'agendado', evento_id: txt(r.evento_id), created_at: quando(r.created_at) }), false]
 ];
 
+/** Lê uma tabela antiga inteira; nem toda tabela antiga tem a coluna "id" para ordenar. */
+async function lerAntiga(buscarAntigo, tabela) {
+  let ultimo;
+  for (const ordem of ['&order=id.asc', '&order=produto_id.asc', '']) {
+    try { return await buscarAntigo(`${tabela}?select=*${ordem}`); }
+    catch (e) { if (e.code === 'AUTH') throw e; ultimo = e; }
+  }
+  throw ultimo;
+}
+
 /**
  * Copia tudo do controle de bebidas para a plataforma (apaga o que já tinha
  * sido copiado antes). `buscarAntigo(caminho)` lê do banco antigo.
@@ -167,7 +177,7 @@ export async function migrarDoAntigo(buscarAntigo, progresso = () => { }) {
   const origem = {};
   for (const [antiga, , , obrigatoria] of MAPA_MIGRACAO) {
     progresso(`Lendo ${antiga} do controle de bebidas…`);
-    try { origem[antiga] = await buscarAntigo(`${antiga}?select=*&order=id.asc`); }
+    try { origem[antiga] = await lerAntiga(buscarAntigo, antiga); }
     catch (e) { if (e.code === 'AUTH' || obrigatoria) throw e; origem[antiga] = []; }
     if (!Array.isArray(origem[antiga])) origem[antiga] = [];
   }
@@ -177,7 +187,8 @@ export async function migrarDoAntigo(buscarAntigo, progresso = () => { }) {
   await rpc('est_preparar_migracao');
   const contagens = {};
   for (const [antiga, nova, conv] of MAPA_MIGRACAO) {
-    const linhas = origem[antiga].filter(r => r && r.id !== undefined && r.id !== null).map(r => {
+    // tabela sem coluna id no sistema antigo (ex.: estoque por produto): o id novo é gerado aqui
+    const linhas = origem[antiga].filter(r => r && typeof r === 'object').map(r => {
       const x = { ...conv(r), legado: r };
       if (nova === 'est_lotes' && !x.validade) x.validade = dia(valItem.get(String(r.compra_item_id))) || null;
       return x;
@@ -204,7 +215,7 @@ export async function conferirMigracao(buscarAntigo) {
     produtos: await buscarAntigo('produtos?select=id,nome&order=id.asc'),
     estoque: await buscarAntigo('estoque?select=produto_id,quantidade,custo_medio&order=produto_id.asc')
   };
-  const contar = async t => { try { return (await buscarAntigo(`${t}?select=id&order=id.asc`)).length; } catch { return 0; } };
+  const contar = async t => { try { return (await lerAntiga(buscarAntigo, t)).length; } catch { return 0; } };
   const tabelas = [];
   for (const [antiga, novaT] of MAPA_MIGRACAO) {
     const chave = { est_produtos: 'produtos', est_codigos_barras: 'codigos', est_estoque: 'estoque', est_compras: 'compras', est_compras_itens: 'comprasItens', est_lotes: 'lotes', est_eventos: 'eventos', est_eventos_itens: 'eventosItens', est_consumos_lotes: 'consumos', est_movimentacoes: 'movimentacoes', est_balancos: 'balancos', est_balancos_itens: 'balancosItens', est_agenda: 'agenda' }[novaT];

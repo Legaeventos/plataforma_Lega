@@ -1,3 +1,7 @@
+# v1.7.1 — Correção na cópia do controle de bebidas
+
+- A cópia parava com "Falha ao ler estoque (400)": a tabela de estoque do sistema antigo não tem a coluna "id". Agora a leitura se adapta a tabelas sem essa coluna, e a conferência conta as linhas do mesmo jeito.
+
 # v1.7.0 — Compras e estoque de todos os setores (etapa 2)
 
 - Novo menu Estoque, para bebidas, alimentação, decoração e escritório/casa, com as abas Visão geral, Produtos, Compras, Consumo das festas e Conferência.
