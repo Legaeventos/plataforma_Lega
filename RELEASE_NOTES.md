@@ -1,3 +1,13 @@
+# v1.3.2 — Validade dos orçamentos (5 dias úteis)
+
+- Todo orçamento vale 5 dias úteis (segunda a sexta) a partir do envio; a data de validade sai no PDF do orçamento.
+- No 4º dia útil ("vence amanhã") e no 5º ("vence hoje") o orçamento aparece no novo quadro "Orçamentos aguardando retorno" do Hoje na Lega e no topo do evento.
+- No evento: botões "Cliente aceitou", "Cliente recusou" (com motivo opcional), "Prorrogar prazo" (+5 dias úteis) e "Lembrar pelo WhatsApp" (quando o cliente tem telefone cadastrado).
+- Sem retorno, no 6º dia útil o orçamento é arquivado automaticamente como "Não fechou (validade expirada)". Pode ser reaberto; o prazo recomeça.
+- Nova versão do orçamento também renova o prazo.
+- Orçamentos que já estavam em aberto ganharam 5 dias úteis a partir da atualização (ninguém é arquivado de surpresa).
+- Festas cuja data já passou não são arquivadas automaticamente: continuam com a pergunta "Esta festa aconteceu?".
+
 # v1.3.1 — "Resolver agora" abre o evento certo
 
 - Os botões do "Hoje na Lega" (Resolver agora, Depois desta ação, Próximos eventos, Precisa de atenção) abrem o evento direto na etapa a resolver, em vez de só abrir a lista de eventos.

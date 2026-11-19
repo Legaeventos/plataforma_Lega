@@ -28,7 +28,7 @@ async function bootstrap(){
   if(storageBloqueado()){showLogin();setAuthMessage(MSG_STORAGE,true);loginForm?.querySelector('button')?.setAttribute('disabled','');return}
   const session=await getSession();if(!session){showLogin();return}
   await resolveIdentity(session);
-  const result=await hydrateFromCloud();if(!result.ok)enableCloudSync();checkVersion();setInterval(checkVersion,5*60*1000);
+  const result=await hydrateFromCloud();if(!result.ok)enableCloudSync();rodarValidades();setInterval(rodarValidades,30*60*1000);checkVersion();setInterval(checkVersion,5*60*1000);
   renderUser();showApp();navigate(location.hash.slice(1)||'dashboard');
 }
 
@@ -101,6 +101,8 @@ function mostrarAvisoPublicacao(version){
   bar.innerHTML=`<span>O site anuncia a versão ${version}, mas os arquivos publicados ainda são da ${APP_VERSION}. A publicação no GitHub parece incompleta (arquivos fora das pastas).</span>`;
   document.body.appendChild(bar);
 }
+// Validade dos orçamentos: arquiva os vencidos ao abrir e a cada 30 min.
+async function rodarValidades(){try{const m=await import('../core/engine/validade-orcamento.js');const r=m.processarValidades();if(r.arquivados.length)window.dispatchEvent(new CustomEvent('lega:remote-changed'));}catch(err){console.warn('validade',err)}}
 window.addEventListener('beforeunload',()=>{flushSync()});
 // --- Login expirado ----------------------------------------------------------
 window.addEventListener('lega:auth-expired',()=>{

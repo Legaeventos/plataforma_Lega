@@ -3,6 +3,7 @@ import { readJSON } from '../../js/storage.js';
 import { treeProgress } from '../../core/components/tree-progress.js';
 import { analyzeEvent } from '../../core/engine/event-analyzer.js';
 import { buildPriorities, priorityLevel } from '../../core/engine/priority-engine.js';
+import { validadeDe, hojeISO, diasUteisEntre } from '../../core/engine/validade-orcamento.js';
 
 const EVENTS_KEY = 'lega.eventos';
 const CLIENTS_KEY = 'lega.clientes';
@@ -155,6 +156,20 @@ function metricCard({ className = '', icon, label, value, note }) {
 // Abre o evento direto na etapa que precisa de ação (decidida pelo módulo de eventos).
 const abrirEvento = item => `data-route="eventos" data-event-id="${esc(item?.event?.id || '')}" data-tab="auto"`;
 
+// Orçamentos aguardando retorno do cliente (validade de 5 dias úteis)
+function painelValidade() {
+  const eventos = readJSON('lega.eventos', []) || [];
+  const hoje = hojeISO();
+  const q = e => (e.orcamentos || []).find(x => x.id === e.orcamentoEscolhidoId) || [...(e.orcamentos || [])].sort((a, b) => (a.versao || 0) - (b.versao || 0)).at(-1) || {};
+  const vencendo = eventos.map(e => ({ e, v: validadeDe(e, hoje) })).filter(x => x.v.aplicavel && (x.v.fase === 'vence-hoje' || x.v.fase === 'vence-amanha')).sort((a, b) => a.v.restantes - b.v.restantes);
+  const arquivados = eventos.filter(e => e.status === 'perdido' && e.perdidoAutomatico && e.perdidoEm && diasUteisEntre(e.perdidoEm.slice(0, 10), hoje) <= 2);
+  if (!vencendo.length && !arquivados.length) return '';
+  const linha = (e, rotulo, cls) => `<button class="attention-item ${cls}" data-route="eventos" data-event-id="${esc(e.id)}" data-tab="menu"><span class="attention-mark"></span><span><strong>${esc(q(e).cliente || 'Cliente')} · ${esc(q(e).nome || 'Evento')}</strong><small>${rotulo} · festa em ${esc(dateBR(q(e).data))}</small></span></button>`;
+  return `<section class="panel validade-panel"><div class="panel-header"><div><h2>⏳ Orçamentos aguardando retorno</h2><p>Validade de 5 dias úteis. Peça um retorno antes de vencer; sem resposta, o orçamento é arquivado automaticamente.</p></div><span class="attention-count">${vencendo.length}</span></div>
+    <div class="attention-list">${vencendo.map(x => linha(x.e, x.v.fase === 'vence-hoje' ? 'Vence HOJE' : 'Vence amanhã', x.v.fase === 'vence-hoje' ? 'is-urgent' : '')).join('')}
+    ${arquivados.map(e => linha(e, 'Arquivado por falta de retorno — reabra se o cliente voltar', 'is-muted')).join('')}</div></section>`;
+}
+
 function upcomingCard(item) {
   const { event, quote, analysis } = item;
   const health = healthMeta(analysis.health.status);
@@ -201,6 +216,7 @@ export function render({ user }) {
         ${metricCard({ className: 'green', icon: 'muda.svg', label: 'Valores a receber', value: money(data.receivable), note: `${data.clients} cliente(s) cadastrado(s)` })}
       </section>
 
+      ${painelValidade()}
       <section class="assistant-panel panel" aria-label="Assistente operacional">
         <div class="panel-header">
           <div><h2>O que fazer agora?</h2><p>O sistema organizou as ações pelo risco e pela proximidade de cada evento.</p></div>
