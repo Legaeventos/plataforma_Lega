@@ -11,7 +11,7 @@ import { mergeState, deepEqual } from './merge.js';
 // • Antes de substituir dados locais, uma cópia de segurança é guardada.
 
 const LOCAL_ONLY_PREFIXES=['lega.auth.','lega.sync.'];
-const LOCAL_ONLY_KEYS=new Set(['lega.user','lega.nav.request','lega.navigation.request','lega.portaria.evento']);
+const LOCAL_ONLY_KEYS=new Set(['lega.user','lega.estoque.ui','lega.bebidas.ui','lega.nav.request','lega.navigation.request','lega.portaria.evento']);
 const BASE_KEY='lega.sync.base';
 const VERSION_KEY='lega.sync.version';
 const BACKUP_KEY='lega.sync.backup';

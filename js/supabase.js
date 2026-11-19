@@ -111,6 +111,19 @@ export async function deleteGuest(session,guestId){
 }
 
 
+// --- Acesso genérico às tabelas da plataforma (estoque, v1.7.0) ---------
+// Usa o login da plataforma; renova o acesso uma vez se o Supabase disser 401.
+export async function platRest(metodo,caminho,body,prefer){
+  let s=await getSession();if(!s)throw authError('Entre de novo na Plataforma Lega.');
+  const ir=(tok)=>fetch(`${SUPABASE_URL}/rest/v1/${caminho}`,{method:metodo,cache:'no-store',headers:{...jsonHeaders(tok),...(prefer?{'Prefer':prefer}:{})},body:body===undefined?undefined:JSON.stringify(body)});
+  let r=await ir(s.access_token);
+  if(r.status===401){const n=await refreshSession();if(!n)throw authError('Sessão expirada');r=await ir(n.access_token);}
+  if(r.status===401)throw authError('Sessão expirada');
+  const txt=await r.text();let dados=null;try{dados=txt?JSON.parse(txt):null}catch{dados=txt}
+  if(!r.ok){const e=new Error((dados&&(dados.message||dados.hint))||`Falha (${r.status})`);e.status=r.status;e.codigo=dados?.code;e.detalhe=dados;throw e;}
+  return dados;
+}
+
 // --- Fotos do orçamento (Supabase Storage, v1.6.0) --------------------
 // As fotos ficam no bucket público "orcamento-fotos" do próprio projeto da
 // plataforma; envio e exclusão usam o login de quem está na plataforma.

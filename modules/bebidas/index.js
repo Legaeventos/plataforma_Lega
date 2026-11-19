@@ -7,7 +7,8 @@
 // balanço) continuam no sistema antigo nesta fase.
 
 import * as banco from './banco.js';
-import { readJSON } from '../../js/storage.js';
+import { readJSON, writeJSON } from '../../js/storage.js';
+import { viradaLocal, carregar as carregarPlataforma, formatoBebidas } from '../../core/engine/estoque-db.js';
 import {
   definirDados, definirMostrarValores, mostrandoValores,
   formatarMoeda, formatarNumero, formatarData, hojeInputDate, escapeHtml, obterProdutoPorId,
@@ -30,7 +31,39 @@ let simulacao = null;      // {adultos, criancas, tipo, adesao, semAlcool, linha
 let eventoAberto = null;
 
 // ------------------------------------------------------------------ leitura
+// Depois da virada (v1.7.0) os dados vêm das tabelas da própria plataforma.
+const naPlataforma = () => !!viradaLocal();
+const precisaLogin = () => !naPlataforma() && !banco.temSessao();
+
+/** Agenda para as sugestões: festas da plataforma ainda por acontecer + agenda antiga sem par na mesma data. */
+function agendaDaPlataforma(agendaAntiga) {
+  const hoje = hojeInputDate();
+  const ativos = ['aceito', 'contrato', 'entrada', 'preparacao', 'pronto'];
+  const evs = (readJSON('lega.eventos', []) || []).filter(e => ativos.includes(e.status)).map(e => {
+    const q = (e.orcamentos || []).find(o => o.id === e.orcamentoEscolhidoId) || (e.orcamentos || []).at(-1) || {};
+    const adultos = Number(e.adultos || 0), criancas = Number(e.criancas || 0);
+    const pol = e.alcoolicasPolitica || 'Por adesão';
+    return { id: `plat_${e.id}`, nome_evento: q.nome || q.cliente || 'Festa', data: q.data, adultos: adultos + criancas ? adultos : Number(q.convidadosTotal || 0), criancas,
+      tipo_evento: 'fechada', alcoolico_adesao: pol === 'Por adesão', sem_alcool: pol === 'Não haverá', status: e.status === 'aceito' ? 'a_confirmar' : 'agendado',
+      observacao: adultos + criancas ? '' : 'Sem divisão adultos/crianças: contado como adultos', plataforma: true };
+  }).filter(a => a.data && a.data >= hoje);
+  const datas = new Set(evs.map(a => a.data));
+  return [...evs, ...(agendaAntiga || []).filter(a => !datas.has(String(a.data).slice(0, 10)))].sort((a, b) => String(a.data).localeCompare(String(b.data)));
+}
+
+async function carregarDaPlataforma() {
+  const b = formatoBebidas(await carregarPlataforma({ forcar: true }));
+  const { produtos, estoque, compras, comprasItens, eventos, eventosItens, movimentacoes, lotesBanco, consumosBanco } = b;
+  const agenda = agendaDaPlataforma(b.agenda);
+  const lotes = { compras, comprasItens, eventos, eventosItens, movimentacoes, estoque, lotesBanco, consumosBanco };
+  definirDados({ produtos, estoque, lotes });
+  const modelosHistorico = calcularModelosPorTipo(produtos, eventos, eventosItens);
+  dados = { produtos, estoque, compras, comprasItens, eventos, eventosItens, movimentacoes, lotesBanco, consumosBanco, agenda, lotes, modelosHistorico, lidoEm: new Date() };
+  return dados;
+}
+
 async function carregar() {
+  if (naPlataforma()) return carregarDaPlataforma();
   const lerOuVazio = c => banco.buscar(c).catch(e => { if (e.code === 'AUTH') throw e; return []; });
   const [produtos, estoque, compras, comprasItens, eventos, eventosItens, movimentacoes, lotesBanco, consumosBanco, agenda] = await Promise.all([
     banco.buscar('produtos?select=*&order=nome.asc'),
@@ -53,7 +86,7 @@ async function carregar() {
 }
 function garantirDados(root) {
   // sem login ou depois de um erro, só tenta de novo quando a pessoa pedir
-  if (dados || carregando || erro || !banco.temSessao()) return;
+  if (dados || carregando || erro || precisaLogin()) return;
   erro = null;
   carregando = carregar().catch(e => { erro = e; }).finally(() => { carregando = null; if (root?.isConnected) desenhar(root); });
 }
@@ -146,7 +179,7 @@ function compraConsolidada(horizonte) {
 
 // ------------------------------------------------------------------ telas
 const ABAS_BASE = [['painel', 'Painel'], ['estoque', 'Estoque'], ['eventos', 'Eventos'], ['compras', 'Sugestão de compra']];
-const temEstoqueInterno = () => (readJSON('lega.estoque.produtos', []) || []).length > 0;
+const temEstoqueInterno = () => !naPlataforma() && (readJSON('lega.estoque.produtos', []) || []).length > 0;
 const abas = () => temEstoqueInterno() ? [...ABAS_BASE, ['conferencia', 'Conferência com o estoque antigo']] : ABAS_BASE;
 const kpi = (titulo, valor, extra = '') => `<div class="panel"><small>${titulo}</small><strong>${valor}</strong>${extra}</div>`;
 const OPCOES_PERIODO = [['tudo', 'Todo o período'], ['mes', 'Este mês'], ['mes_passado', 'Mês passado'], ['3meses', 'Últimos 3 meses'], ['6meses', 'Últimos 6 meses'], ['ano', 'Este ano'], ['personalizado', 'Personalizado']];
@@ -329,8 +362,8 @@ function telaLogin(msg = '') {
 }
 
 function conteudo() {
-  if (!banco.temSessao()) return telaLogin(erro?.code === 'AUTH' ? erro.message : '');
-  if (erro) return erro.code === 'AUTH' ? telaLogin(erro.message) : `<section class="panel empty-state"><h3>Não foi possível ler o Controle de Bebidas.</h3><p>${escapeHtml(erro.message)}</p><button class="btn btn-primary" type="button" data-bb="recarregar">Tentar de novo</button></section>`;
+  if (precisaLogin()) return telaLogin(erro?.code === 'AUTH' ? erro.message : '');
+  if (erro) return erro.code === 'AUTH' && !naPlataforma() ? telaLogin(erro.message) : `<section class="panel empty-state"><h3>${naPlataforma() ? 'Não foi possível ler o estoque da plataforma.' : 'Não foi possível ler o Controle de Bebidas.'}</h3><p>${escapeHtml(erro.message)}</p><button class="btn btn-primary" type="button" data-bb="recarregar">Tentar de novo</button></section>`;
   if (!dados) return '<section class="panel empty-state"><h3>Carregando dados do Controle de Bebidas…</h3><p>Estoque, eventos e compras.</p></section>';
   if (ui.aba === 'estoque') return telaEstoque();
   if (ui.aba === 'eventos') return telaEventos();
@@ -342,10 +375,13 @@ function conteudo() {
 export function render() {
   try { const a = JSON.parse(localStorage.getItem(UI_KEY) || '{}').aba; if (a) ui.aba = a; } catch { }
   if (!abas().some(([k]) => k === ui.aba)) ui.aba = 'painel';
-  const conectado = banco.temSessao();
+  const plat = naPlataforma();
+  const conectado = plat || banco.temSessao();
+  const atualizado = dados ? `Atualizado às ${dados.lidoEm.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : '';
   return `<div class="page-grid bebidas-module">
-  <section class="events-header"><div><span class="eyebrow">CONTROLE DE BEBIDAS</span><h2>Bebidas</h2><p>Estoque, consumo e sugestões de compra, lidos direto do Controle de Bebidas. Os dois sistemas mostram os mesmos dados.</p></div>
-  ${conectado ? `<div class="bb-head-actions"><span class="bb-sub">${dados ? `Atualizado às ${dados.lidoEm.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''}</span><button class="btn btn-ghost" type="button" data-bb="recarregar">↻ Atualizar</button><button class="btn btn-ghost" type="button" data-bb="sair" title="Desconectar do banco de bebidas neste computador">Desconectar</button></div>` : ''}</section>
+  <section class="events-header"><div><span class="eyebrow">${plat ? 'BEBIDAS' : 'CONTROLE DE BEBIDAS'}</span><h2>Bebidas</h2><p>${plat ? 'Consumo médio, resultado, validades e sugestões de compra. Compras e consumo das festas são lançados no Estoque da plataforma.' : 'Estoque, consumo e sugestões de compra, lidos direto do Controle de Bebidas. Os dois sistemas mostram os mesmos dados.'}</p></div>
+  ${plat ? `<div class="bb-head-actions"><span class="bb-sub">${atualizado}</span><button class="btn btn-primary" type="button" data-bb="ir-estoque" data-aba="compras">＋ Lançar compra</button><button class="btn btn-ghost" type="button" data-bb="ir-estoque" data-aba="consumo">＋ Consumo de festa</button><button class="btn btn-ghost" type="button" data-bb="recarregar">↻ Atualizar</button></div>`
+    : conectado ? `<div class="bb-head-actions"><span class="bb-sub">${atualizado}</span><button class="btn btn-ghost" type="button" data-bb="recarregar">↻ Atualizar</button><button class="btn btn-ghost" type="button" data-bb="sair" title="Desconectar do banco de bebidas neste computador">Desconectar</button></div>` : ''}</section>
   ${conectado ? `<nav class="bb-tabs">${abas().map(([k, t]) => `<button type="button" class="${ui.aba === k ? 'active' : ''}" data-bb-aba="${k}">${t}</button>`).join('')}</nav>` : ''}
   <div id="bbConteudo">${conteudo()}</div></div>`;
 }
@@ -365,6 +401,7 @@ function ligar(root) {
   garantirDados(root);
   root.querySelectorAll('[data-bb-aba]').forEach(b => b.addEventListener('click', () => { ui.aba = b.dataset.bbAba; salvarUi(); desenhar(root); window.scrollTo(0, 0); }));
   q('[data-bb="recarregar"]')?.addEventListener('click', () => { dados = null; erro = null; desenhar(root); });
+  root.querySelectorAll('[data-bb="ir-estoque"]').forEach(b => b.addEventListener('click', () => { try { const u = JSON.parse(localStorage.getItem('lega.estoque.ui') || '{}'); localStorage.setItem('lega.estoque.ui', JSON.stringify({ ...u, aba: b.dataset.aba, setor: 'bebidas', novo: true })); } catch { } location.hash = 'estoque'; }));
   q('[data-bb="sair"]')?.addEventListener('click', () => { if (!confirm('Desconectar este computador do banco de bebidas?')) return; banco.sair(); dados = null; desenhar(root); });
   root.querySelectorAll('[data-bb="valores"]').forEach(b => b.addEventListener('click', () => { definirMostrarValores(!mostrandoValores()); desenhar(root); }));
   q('#bbLogin')?.addEventListener('submit', async ev => {

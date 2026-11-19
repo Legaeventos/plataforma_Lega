@@ -302,3 +302,58 @@
 .ft-img img{position:absolute;inset:0;width:100%;height:100%!important;object-fit:cover}
 #fotosOrcamento,.ft-envio>*,.ft-grade>*{min-width:0}
 .page-grid>*{min-width:0}
+
+/* v1.7.0 — Estoque (todos os setores) */
+.es-aviso{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 16px;border-radius:14px;margin:0 0 14px;font-weight:600}
+.es-aviso button{border:0;background:none;font-size:16px;cursor:pointer;color:inherit}
+.es-aviso--ok{background:#eaf7ee;border:1px solid #bfe3c9;color:#245c35}
+.es-aviso--erro{background:#fdecec;border:1px solid #f3c2c2;color:#8a2323}
+.es-setores{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.es-setor{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;cursor:pointer;font:inherit;border:1px solid var(--line,#eee);transition:.15s}
+.es-setor:hover{border-color:#b997d3;transform:translateY(-1px)}
+.es-setor__ic{font-size:26px}.es-setor strong{font-size:1.05rem}.es-setor span{color:#776985;font-size:.85rem}.es-setor b{font-size:1.2rem;margin-top:4px}
+.es-setor em{font-style:normal;color:#b45309;font-weight:700;font-size:.82rem}.es-setor small{color:#8a7d96}
+.es-tarefas{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.es-tarefas li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;background:#faf7fc;border:1px solid #eee5f3}
+.es-ok{color:#2f7a45;font-weight:600}
+.es-alerta{color:#b45309;font-weight:600}
+.es-dica{color:#7b6d88;font-size:.85rem;margin:6px 0}
+.es-in{color:#2f7a45;font-weight:700}.es-out{color:#b4472f;font-weight:700}
+.es-filtro{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin:0 0 12px}
+.es-busca{flex:1;min-width:200px;max-width:340px;padding:9px 12px;border:1px solid #ddd2e5;border-radius:12px;font:inherit}
+.es-tabela-click tbody tr{cursor:pointer}.es-tabela-click tbody tr:hover{background:#faf6fc}
+.es-inativo{opacity:.5}
+.es-modal{max-width:720px}
+.es-conv{display:flex;align-items:center;gap:6px}.es-conv input{width:90px}.es-conv select{width:auto}
+.es-conv--fator{margin-top:6px;font-size:.85rem;color:#6d5d7c}.es-conv--fator input{width:70px}
+.es-tipos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.es-tipo{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border:1px solid #e3d9ea;border-radius:12px;cursor:pointer;background:#fff}
+.es-tipo input{position:absolute;opacity:0;pointer-events:none}
+.es-tipo small{color:#7b6d88;font-size:.78rem}
+.es-tipo.on{border-color:#6f3b91;background:#f5eefa;box-shadow:0 0 0 1px #6f3b91 inset}
+.es-baixa{margin-top:14px;border-top:1px solid #eee;padding-top:10px}.es-baixa summary{cursor:pointer;font-weight:700;color:#6f3b91}
+.es-hist{margin-top:12px}.es-hist h3{font-size:.95rem;margin:0 0 6px}.es-hist ul,.es-lista{margin:0;padding-left:18px;color:#5b4a68;font-size:.9rem}
+.es-form{border:2px solid #d9c8ea}
+.es-itens{display:grid;gap:10px;margin:12px 0}
+.es-item{position:relative;display:grid;grid-template-columns:minmax(220px,2.2fr) minmax(170px,1.3fr) minmax(140px,1fr) 150px;gap:10px;padding:12px 40px 12px 12px;border-radius:14px;background:#faf7fc;border:1px solid #eee5f3}
+.es-item--consumo{grid-template-columns:minmax(220px,2.4fr) repeat(5,minmax(80px,1fr))}
+.es-item .field{margin:0}.es-item small{display:block;margin-top:3px;color:#7b6d88;font-size:.78rem}
+.es-item input,.es-item select{width:100%;box-sizing:border-box}
+.es-calc{background:#f1ecf5!important;font-weight:700}
+.es-x{position:absolute;top:8px;right:8px;border:0;background:#fff;border-radius:50%;width:26px;height:26px;cursor:pointer;color:#8a6d9e;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.es-form__rodape{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:6px 0 12px}
+.es-form__rodape>div:first-child{display:flex;gap:8px;flex-wrap:wrap}
+.es-total{font-size:1rem;color:#5b4a68}.es-total strong{font-size:1.25rem;color:#2d1b3d}
+.es-check{display:flex;align-items:center;gap:6px;font-weight:600}
+.es-compra{border:1px solid #eee5f3;border-radius:12px;margin:0 0 8px;background:#fff}
+.es-compra summary{display:grid;grid-template-columns:100px 1fr auto auto;gap:12px;align-items:center;padding:10px 14px;cursor:pointer}
+.es-compra[open]{padding-bottom:10px}.es-compra table,.es-compra p,.es-compra>button{margin:0 14px 8px}
+.es-etapa.is-feito{border-left:4px solid #3c9a5b}.es-etapa.is-bloqueado{opacity:.6}
+.es-passos{margin:6px 0 12px;padding-left:20px;line-height:1.7}
+.es-virada{margin-top:14px;padding:14px 16px;border-radius:14px;background:#fff8e8;border:1px solid #f0dca8}
+.es-contado{width:110px;padding:7px 9px;border:1px solid #ddd2e5;border-radius:10px;font:inherit}
+@media(max-width:900px){.es-item,.es-item--consumo{grid-template-columns:1fr 1fr}.es-item__prod{grid-column:1/-1}.es-tipos{grid-template-columns:1fr}.es-compra summary{grid-template-columns:1fr auto}.es-tarefas li{flex-direction:column;align-items:stretch}}
+.es-acoes{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0}.es-form .es-acoes{justify-content:flex-end}
+.estoque-module .bb-table th{text-align:left}
+.es-item .es-conv input{width:84px;flex:none}.es-item .es-conv select{width:auto;flex:1}
+.es-item .es-conv span{white-space:nowrap}

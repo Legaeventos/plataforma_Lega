@@ -1,3 +1,17 @@
+# v1.7.0 — Compras e estoque de todos os setores (etapa 2)
+
+- Novo menu Estoque, para bebidas, alimentação, decoração e escritório/casa, com as abas Visão geral, Produtos, Compras, Consumo das festas e Conferência.
+- Visão geral: valor em estoque por setor e "O que fazer agora" (festas recentes sem consumo lançado, produtos no mínimo, lotes vencendo em 30 dias).
+- Produtos: setor, categoria, unidade de estoque, unidade de compra com conversão (ex.: compra em kg, conta em unidades, 1 kg = 40 un), tipo de item (consumo, reutilizável, para um evento), estoque mínimo, baixa manual (quebra, vencido, uso interno) e histórico.
+- Compras: vários itens por nota, busca por nome ou código de barras, conversão de unidade, custo por unidade calculado, validade, compra para uma festa específica e cadastro de produto na hora. A conversão usada fica lembrada para a próxima compra.
+- Consumo das festas: escolhe a festa da plataforma (adultos, crianças e bebida alcoólica vêm preenchidos), Levado/Voltou/Consumido, sobra aberta e preço de venda. O estoque baixa pelos lotes mais antigos e o custo vai para o resultado da festa (aba Consumo e Encerramento do evento).
+- Conferência: contagem física por setor que acerta o estoque e os lotes, com histórico.
+- Migração do controle de bebidas: copia produtos, códigos de barras, estoque, lotes, compras, consumo das festas, conferências e agenda, confere tabela por tabela e o saldo de cada produto, e depois "vira a chave". A cópia pode ser repetida até a virada.
+- Bebidas: depois da virada, o painel lê os dados da plataforma (mesmos números) e a sugestão de compra usa as festas futuras da plataforma.
+- Gravações que mexem em várias tabelas (compra, consumo, conferência, baixa) são feitas pelo banco de uma vez só (tudo ou nada).
+- Novo arquivo sql/etapa2_estoque.sql (rodar uma vez no Supabase da plataforma; a tela Estoque tem o botão para copiar).
+- O estoque antigo da plataforma (aquele que deu divergência) foi descartado.
+
 # v1.6.0 — Enviar fotos pela plataforma
 
 - Nova seção Configurações → Fotos do orçamento: escolher ou arrastar várias fotos, marcar onde combinam (capa, decoração, gastronomia, espaço e crianças) e enviar, sem precisar do GitHub.
