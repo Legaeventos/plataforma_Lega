@@ -110,4 +110,25 @@ export async function deleteGuest(session,guestId){
   return true;
 }
 
+
+// --- Fotos do orçamento (Supabase Storage, v1.6.0) --------------------
+// As fotos ficam no bucket público "orcamento-fotos" do próprio projeto da
+// plataforma; envio e exclusão usam o login de quem está na plataforma.
+export const FOTOS_BUCKET='orcamento-fotos';
+export const urlPublicaFoto=(path)=>`${SUPABASE_URL}/storage/v1/object/public/${FOTOS_BUCKET}/${path.split('/').map(encodeURIComponent).join('/')}`;
+async function storageReq(metodo,path,body,tipo){
+  let s=await getSession();if(!s)throw authError('Entre de novo na plataforma para enviar fotos.');
+  const ir=(tok)=>fetch(`${SUPABASE_URL}/storage/v1/object/${FOTOS_BUCKET}/${path.split('/').map(encodeURIComponent).join('/')}`,{method:metodo,headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${tok}`,...(tipo?{'Content-Type':tipo,'x-upsert':'true','cache-control':'31536000'}:{})},body});
+  let r=await ir(s.access_token);
+  if(r.status===401||r.status===403){const n=await refreshSession();if(n)r=await ir(n.access_token);}
+  if(!r.ok){
+    const t=await r.text().catch(()=>'');
+    const e=new Error(/bucket not found/i.test(t)?'BUCKET':/row-level security|policy|unauthorized/i.test(t)||r.status===403?'PERMISSAO':`Falha (${r.status}) ${t.slice(0,160)}`);
+    e.code=e.message==='BUCKET'||e.message==='PERMISSAO'?'SETUP':'ERRO';throw e;
+  }
+  return true;
+}
+export const enviarFotoStorage=(path,blob)=>storageReq('POST',path,blob,blob.type||'image/jpeg');
+export const apagarFotoStorage=(path)=>storageReq('DELETE',path);
+
 export { SUPABASE_URL, SESSION_KEY };

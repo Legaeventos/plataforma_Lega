@@ -1,3 +1,29 @@
+# v1.6.0 — Enviar fotos pela plataforma
+
+- Nova seção Configurações → Fotos do orçamento: escolher ou arrastar várias fotos, marcar onde combinam (capa, decoração, gastronomia, espaço e crianças) e enviar, sem precisar do GitHub.
+- As fotos são reduzidas no navegador (até 1800 px, JPEG) antes de enviar e ficam guardadas no Supabase da plataforma (espaço "orcamento-fotos").
+- Cada foto enviada pode ter a descrição e as categorias alteradas, ou ser apagada. As fotos que vêm com a plataforma podem ser escondidas da galeria.
+- No editor do orçamento as fotos enviadas aparecem em "Enviadas por vocês" e nas categorias marcadas; há um atalho do editor para a seção de fotos.
+- Primeira vez: se o espaço de fotos ainda não existir, a plataforma mostra o texto para colar no SQL Editor do Supabase (uma vez só).
+- Correção: a tela de Configurações ficava mais larga que a tela no celular.
+
+# v1.5.0 — Orçamento personalizado
+
+- Ao gerar um orçamento abre o editor "Personalizar orçamento", com prévia ao vivo das 3 páginas.
+- Estilo: 5 combinações de cores (Lilás Lega, Jardim, Rosa delicado, Azul aventura, Noite dourada).
+- Fotos: escolha a foto da capa e as 3 fotos de Gastronomia, Decoração e Espaço e crianças. A galeria tem filtros por categoria.
+- Fotos novas: envie imagens para a pasta assets/orcamento no GitHub e elas aparecem sozinhas na galeria, em "Novas".
+- Mensagem para o cliente: texto livre na capa (em branco usa o texto padrão).
+- O que mostrar: valor por convidado, opção à vista, tabela de parcelas, hora extra e os 3 passos para reservar podem ser ligados ou desligados em cada orçamento.
+- Padrão por tipo de festa: "Usar estas escolhas como padrão" faz os próximos orçamentos daquele tipo (ex.: Formatura) já abrirem com as mesmas fotos, cores e opções. O padrão é compartilhado entre os computadores.
+- As escolhas ficam salvas em cada versão. Botões "🎨 Personalizar" no evento permitem mudar depois.
+
+# v1.4.0 — Novo orçamento
+
+- Novo modelo de orçamento (3 páginas A4): capa personalizada com o nome do cliente e da festa, data por extenso e dados principais; "o que está incluso" com fotos de gastronomia, decoração e espaço; "investimento e reserva" com valor por convidado, à vista (com quanto economiza) e parcelado (entrada + 6x), os 3 passos para reservar, validade e QR Code do WhatsApp.
+- Botão "WhatsApp" na janela do orçamento, com mensagem pronta.
+- Cores da marca (lilás e verde-folha) e títulos na fonte Fraunces.
+
 # v1.3.2 — Validade dos orçamentos (5 dias úteis)
 
 - Todo orçamento vale 5 dias úteis (segunda a sexta) a partir do envio; a data de validade sai no PDF do orçamento.
