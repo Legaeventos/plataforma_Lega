@@ -44,7 +44,7 @@ async function navigate(route='dashboard'){
 function closeMenu(){sidebar.classList.remove('open');backdrop.classList.remove('show')}
 
 document.addEventListener('click',async e=>{
-  const trigger=e.target.closest('[data-route]');if(trigger)navigate(trigger.dataset.route);
+  const trigger=e.target.closest('[data-route]');if(trigger){if(trigger.dataset.eventId){try{localStorage.setItem('lega.navigation.request',JSON.stringify({eventId:trigger.dataset.eventId,tab:trigger.dataset.tab||'auto'}))}catch{}}navigate(trigger.dataset.route);}
   if(e.target.closest('[data-action="logout"]')){await flushSync();await signOut();location.reload()}
 });
 menuButton.addEventListener('click',()=>{sidebar.classList.toggle('open');backdrop.classList.toggle('show')});backdrop.addEventListener('click',closeMenu);

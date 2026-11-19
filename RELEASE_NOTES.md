@@ -1,3 +1,8 @@
+# v1.3.1 — "Resolver agora" abre o evento certo
+
+- Os botões do "Hoje na Lega" (Resolver agora, Depois desta ação, Próximos eventos, Precisa de atenção) abrem o evento direto na etapa a resolver, em vez de só abrir a lista de eventos.
+- Festa antiga que ficou como orçamento abre na pergunta "Esta festa aconteceu?"; as demais abrem no encerramento.
+
 # v1.3.0 — Evento completo de ponta a ponta
 
 **Orçamento da mesma cliente em outra data**

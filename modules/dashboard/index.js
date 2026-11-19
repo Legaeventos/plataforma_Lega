@@ -152,10 +152,13 @@ function metricCard({ className = '', icon, label, value, note }) {
   </article>`;
 }
 
+// Abre o evento direto na etapa que precisa de ação (decidida pelo módulo de eventos).
+const abrirEvento = item => `data-route="eventos" data-event-id="${esc(item?.event?.id || '')}" data-tab="auto"`;
+
 function upcomingCard(item) {
   const { event, quote, analysis } = item;
   const health = healthMeta(analysis.health.status);
-  return `<button class="operation-event ${health.className}" data-route="eventos" title="Abrir módulo de eventos">
+  return `<button class="operation-event ${health.className}" ${abrirEvento(item)} title="Abrir o evento">
     <span class="operation-event__date"><strong>${esc(dateBR(quote?.data || event?.data).slice(0, 5))}</strong><small>${esc(daysLabel(analysis.daysRemaining))}</small></span>
     <span class="operation-event__body">
       <strong>${esc(eventName(event, quote))}</strong>
@@ -217,7 +220,7 @@ export function render({ user }) {
               <p><strong>${esc(eventName(item.event, item.quote))}</strong> · ${esc(eventClient(item.event, item.quote))} · ${esc(daysLabel(item.analysis.daysRemaining))}</p>
               <div class="assistant-reason"><small>Por que agora?</small><span>${esc(mainPriority.reason)}</span></div>
             </div>
-            <button class="btn btn-primary" data-route="${esc(mainPriority.route)}">Resolver agora</button>
+            <button class="btn btn-primary" ${abrirEvento(mainPriority.item)}>Resolver agora</button>
           </div>`;
         })() : emptyBlock('Nenhuma ação pendente. A operação está em dia.')}
         ${secondaryPriorities.length ? `<div class="assistant-secondary">
@@ -225,7 +228,7 @@ export function render({ user }) {
           <div class="assistant-actions">
             ${secondaryPriorities.map(priority => {
               const item = priority.item;
-              return `<button class="assistant-action" data-route="${esc(priority.route)}">
+              return `<button class="assistant-action" ${abrirEvento(priority.item)}>
                 <span class="assistant-action__score">${priority.score}</span>
                 <span class="assistant-action__body"><strong>${esc(priority.action)}</strong><small>${esc(eventName(item.event, item.quote))} · ${esc(daysLabel(item.analysis.daysRemaining))}</small></span>
                 <span class="assistant-action__go">→</span>
@@ -256,7 +259,7 @@ export function render({ user }) {
           <div class="attention-list">
             ${priorities.length ? priorities.map(({ item, text }) => {
               const late = item.analysis.health.status === 'late';
-              return `<button class="attention-item ${late ? 'is-urgent' : ''}" data-route="eventos">
+              return `<button class="attention-item ${late ? 'is-urgent' : ''}" ${abrirEvento(item)}>
                 <span class="attention-mark"></span>
                 <span><strong>${esc(text)}</strong><small>${esc(eventName(item.event, item.quote))} · ${esc(daysLabel(item.analysis.daysRemaining))}</small></span>
               </button>`;
