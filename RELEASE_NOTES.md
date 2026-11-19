@@ -1,3 +1,8 @@
+# v1.7.2 — Cópia do controle de bebidas com ids em código
+
+- A cópia parava com "invalid input syntax for type bigint": algumas tabelas do sistema antigo identificam as linhas por código (uuid). Agora essas linhas ganham números novos na plataforma e todas as referências entre tabelas (produto, compra, lote, festa, controle do bar) são trocadas juntas; o código antigo fica guardado.
+- A conferência da cópia compara cada produto pelo código antigo.
+
 # v1.7.1 — Correção na cópia do controle de bebidas
 
 - A cópia parava com "Falha ao ler estoque (400)": a tabela de estoque do sistema antigo não tem a coluna "id". Agora a leitura se adapta a tabelas sem essa coluna, e a conferência conta as linhas do mesmo jeito.

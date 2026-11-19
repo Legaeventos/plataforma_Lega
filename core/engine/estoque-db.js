@@ -158,6 +158,37 @@ export const MAPA_MIGRACAO = [
   ['eventos_agenda', 'est_agenda', r => ({ id: r.id, nome_evento: txt(r.nome_evento) || 'Evento', data: dia(r.data), adultos: inteiro(r.adultos), criancas: inteiro(r.criancas), tipo_evento: txt(r.tipo_evento) || 'fechada', alcoolico_adesao: bool(r.alcoolico_adesao), sem_alcool: bool(r.sem_alcool), observacao: txt(r.observacao), status: txt(r.status) || 'agendado', evento_id: txt(r.evento_id), created_at: quando(r.created_at) }), false]
 ];
 
+// Ids do sistema antigo: algumas tabelas usam número, outras usam código (uuid,
+// ex.: 10094862-595d-…). Na plataforma os ids são números; as tabelas com código
+// ganham números novos e todas as referências entre tabelas são trocadas juntas.
+// O código antigo continua guardado em "legado".
+const REFERENCIAS = { produto_id: 'produtos', compra_id: 'compras', compra_item_id: 'compras_itens', evento_item_id: 'eventos_itens', lote_id: 'estoque_lotes', balanco_id: 'balancos_estoque' };
+const REF_MOV = { compras: 'compras', eventos: 'eventos', balancos_estoque: 'balancos_estoque', compras_itens: 'compras_itens', estoque_lotes: 'estoque_lotes' };
+const ehInteiro = v => (typeof v === 'number' && Number.isSafeInteger(v)) || (typeof v === 'string' && /^\d{1,15}$/.test(v));
+function mapaDeIds(origem) {
+  const mapas = {};
+  for (const [t, linhas] of Object.entries(origem)) {
+    const comId = (linhas || []).filter(r => r && r.id !== undefined && r.id !== null);
+    if (comId.length && comId.some(r => !ehInteiro(r.id))) { const m = new Map(); comId.forEach(r => { if (!m.has(String(r.id))) m.set(String(r.id), m.size + 1); }); mapas[t] = m; }
+  }
+  const trocar = (tabela, v) => {
+    if (v === undefined || v === null || v === '') return null;
+    const m = mapas[tabela];
+    if (!m) return ehInteiro(v) ? Number(v) : null;
+    if (!m.has(String(v))) m.set(String(v), m.size + 1); // referência a linha apagada: mantém consistente
+    return m.get(String(v));
+  };
+  const aplicar = (antiga, r, x) => {
+    if (r.id !== undefined && r.id !== null) x.id = trocar(antiga, r.id); else delete x.id;
+    for (const [campo, alvo] of Object.entries(REFERENCIAS)) if (campo in x) x[campo] = trocar(alvo, r[campo]);
+    if (antiga === 'eventos_itens') x.evento_id = trocar('eventos', r.evento_id);
+    if (antiga === 'movimentacoes_estoque') { const alvo = REF_MOV[r.referencia_tabela]; x.referencia_id = alvo ? trocar(alvo, r.referencia_id) : (ehInteiro(r.referencia_id) ? Number(r.referencia_id) : null); }
+    if (antiga === 'eventos' && x.controle_bar && mapas.produtos) x.controle_bar = Object.fromEntries(Object.entries(x.controle_bar).map(([k, v]) => [String(trocar('produtos', k)), v]));
+    return x;
+  };
+  return { aplicar, mapas };
+}
+
 /** Lê uma tabela antiga inteira; nem toda tabela antiga tem a coluna "id" para ordenar. */
 async function lerAntiga(buscarAntigo, tabela) {
   let ultimo;
@@ -183,6 +214,7 @@ export async function migrarDoAntigo(buscarAntigo, progresso = () => { }) {
   }
   // validade do lote vem do item da compra quando o lote não tem
   const valItem = new Map((origem.compras_itens || []).map(i => [String(i.id), i.validade]));
+  const ids = mapaDeIds(origem);
   progresso('Preparando a plataforma…');
   await rpc('est_preparar_migracao');
   const contagens = {};
@@ -191,7 +223,7 @@ export async function migrarDoAntigo(buscarAntigo, progresso = () => { }) {
     const linhas = origem[antiga].filter(r => r && typeof r === 'object').map(r => {
       const x = { ...conv(r), legado: r };
       if (nova === 'est_lotes' && !x.validade) x.validade = dia(valItem.get(String(r.compra_item_id))) || null;
-      return x;
+      return ids.aplicar(antiga, r, x);
     });
     for (let i = 0; i < linhas.length; i += 500) {
       progresso(`Copiando ${antiga}: ${Math.min(i + 500, linhas.length)} de ${linhas.length}…`);
@@ -212,8 +244,8 @@ export async function migrarDoAntigo(buscarAntigo, progresso = () => { }) {
 export async function conferirMigracao(buscarAntigo) {
   const nova = await carregar({ forcar: true });
   const antigo = {
-    produtos: await buscarAntigo('produtos?select=id,nome&order=id.asc'),
-    estoque: await buscarAntigo('estoque?select=produto_id,quantidade,custo_medio&order=produto_id.asc')
+    produtos: await lerAntiga(buscarAntigo, 'produtos'),
+    estoque: await lerAntiga(buscarAntigo, 'estoque')
   };
   const contar = async t => { try { return (await lerAntiga(buscarAntigo, t)).length; } catch { return 0; } };
   const tabelas = [];
@@ -221,7 +253,7 @@ export async function conferirMigracao(buscarAntigo) {
     const chave = { est_produtos: 'produtos', est_codigos_barras: 'codigos', est_estoque: 'estoque', est_compras: 'compras', est_compras_itens: 'comprasItens', est_lotes: 'lotes', est_eventos: 'eventos', est_eventos_itens: 'eventosItens', est_consumos_lotes: 'consumos', est_movimentacoes: 'movimentacoes', est_balancos: 'balancos', est_balancos_itens: 'balancosItens', est_agenda: 'agenda' }[novaT];
     tabelas.push({ antiga, nova: novaT, qAntigo: await contar(antiga), qNovo: (nova[chave] || []).length });
   }
-  const estNovo = new Map(nova.estoque.map(e => [String(e.produto_id), e]));
+  const estNovo = new Map(nova.estoque.map(e => [String(e.legado?.produto_id ?? e.produto_id), e]));
   const nomes = new Map(antigo.produtos.map(p => [String(p.id), p.nome]));
   const saldos = antigo.estoque.map(e => {
     const n = estNovo.get(String(e.produto_id));
