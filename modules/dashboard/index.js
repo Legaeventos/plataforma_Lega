@@ -5,6 +5,8 @@ import { analyzeEvent } from '../../core/engine/event-analyzer.js';
 import { buildPriorities, priorityLevel } from '../../core/engine/priority-engine.js';
 import { validadeDe, hojeISO, diasUteisEntre } from '../../core/engine/validade-orcamento.js';
 import { tarefas as tarefasRotina, tarefasEstoque, resumoMes } from '../../core/engine/rotina.js';
+import { abrirRecebimento } from '../../core/components/acoes-rapidas.js';
+import { lancarFixa } from '../financeiro/resultado.js';
 
 const EVENTS_KEY = 'lega.eventos';
 const CLIENTS_KEY = 'lega.clientes';
@@ -193,7 +195,7 @@ function itemRotina(t) {
   const acao = t.eventoId ? `data-route="eventos" data-event-id="${esc(t.eventoId)}" data-tab="${esc(t.aba || 'auto')}"`
     : t.rota === 'estoque' ? `data-dash-estoque="${esc(t.estoqueAba || 'visao')}"` : `data-route="${esc(t.rota || 'dashboard')}"`;
   return `<li class="rotina-item rotina-${t.tipo} ${t.prioridade === 0 ? 'is-urgente' : ''}"><span class="rotina-ic">${t.icone}</span><span class="rotina-txt"><strong>${esc(t.titulo)}</strong><small>${esc(t.detalhe || '')}</small></span>
-    <span class="rotina-acoes">${t.whatsapp ? `<a class="btn btn-ghost btn-sm rotina-wa" href="${esc(t.whatsapp)}" target="_blank" rel="noopener">WhatsApp</a>` : ''}<button class="btn btn-ghost btn-sm" type="button" ${acao}>Abrir</button></span></li>`;
+    <span class="rotina-acoes">${t.tipo === 'cobranca' ? `<button class="btn btn-primary btn-sm" type="button" data-dash-receber="${esc(t.eventoId)}" data-parcela="${esc(t.parcelaId || '')}">✓ Recebido</button>` : ''}${t.fixaId ? `<button class="btn btn-primary btn-sm" type="button" data-dash-fixa="${esc(t.fixaId)}">Lançar agora</button>` : ''}${t.whatsapp ? `<a class="btn btn-ghost btn-sm rotina-wa" href="${esc(t.whatsapp)}" target="_blank" rel="noopener">WhatsApp</a>` : ''}<button class="btn btn-ghost btn-sm" type="button" ${acao}>Abrir</button></span></li>`;
 }
 function painelRotina() {
   let lista = [];
@@ -216,6 +218,8 @@ function faixaMes() {
 export function mount() {
   const root = document.querySelector('#app');
   root.querySelectorAll('[data-dash-estoque]').forEach(b => b.onclick = () => irEstoque(b.dataset.dashEstoque));
+  root.querySelectorAll('[data-dash-receber]').forEach(b => b.onclick = () => abrirRecebimento(b.dataset.dashReceber, b.dataset.parcela));
+  root.querySelectorAll('[data-dash-fixa]').forEach(b => b.onclick = () => lancarFixa(b.dataset.dashFixa, new Date().toISOString().slice(0, 7), () => window.legaNavigate?.('dashboard')));
   root.querySelectorAll('[data-dash-ir-estoque]').forEach(b => b.onclick = () => irEstoque(b.dataset.dashIrEstoque, true));
   tarefasEstoque().then(lista => {
     const alvo = root.querySelector('#rotinaEstoque'); if (!alvo || !lista.length) return;

@@ -12,7 +12,7 @@ function currentUser(){return readJSON('lega.user',DEFAULT_USER)}
 function renderUser(){const user=currentUser();document.querySelector('#userNameTop').textContent=user.name;document.querySelector('#userInitials').textContent=initials(user.name);const role=document.querySelector('#userRoleTop');if(role)role.textContent=user.role||'Administrador'}
 function setAuthMessage(msg='',error=false){const el=document.querySelector('#authMessage');if(el){el.textContent=msg;el.classList.toggle('error',error)}}
 function showLogin(){shell.hidden=true;authScreen.hidden=false;document.querySelector('#loginPassword')?.focus()}
-function showApp(){authScreen.hidden=true;shell.hidden=false}
+function showApp(){authScreen.hidden=true;shell.hidden=false;import('../core/components/acoes-rapidas.js').then(m=>m.instalarAcoesRapidas()).catch(e=>console.error(e))}
 
 async function resolveIdentity(session){
   try{const p=await getProfile(session);if(p&&!p.ativo)throw new Error('Este usuário está desativado.');if(p){writeJSON('lega.user',{name:p.nome,role:p.perfil==='administrador'?'Administrador':p.perfil,email:session.user?.email||''});return true}}
@@ -33,6 +33,7 @@ async function bootstrap(){
 }
 
 let currentRoute='dashboard';let formDirty=false;let refreshPending=false;
+window.legaNavigate=r=>navigate(r);
 async function navigate(route='dashboard'){
   currentRoute=route;formDirty=false;refreshPending=false;markRefresh(false);
   const item=ROUTES[route]||ROUTES.dashboard; title.textContent=item.title;

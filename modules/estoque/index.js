@@ -328,17 +328,29 @@ function rotuloProduto(p) { return `${p.nome} · ${setorNome(p.setor)}`; }
 function opcoesProdutos(setor) {
   return ativos().filter(p => !setor || setor === 'todos' || p.setor === setor).sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR')).map(p => `<option value="${esc(rotuloProduto(p))}">`).join('');
 }
-function acharProduto(texto) {
+const normBusca = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+function acharProduto(texto, { aproximado = true } = {}) {
   const t = String(texto || '').trim(); if (!t) return null;
   const l = t.toLowerCase();
-  return d.produtos.find(p => rotuloProduto(p).toLowerCase() === l) || d.produtos.find(p => String(p.nome).toLowerCase() === l)
+  const exato = d.produtos.find(p => rotuloProduto(p).toLowerCase() === l) || d.produtos.find(p => String(p.nome).toLowerCase() === l)
     || d.produtos.find(p => p.codigo_barras && String(p.codigo_barras) === t)
-    || prodPorId(d.codigos.find(c => String(c.codigo_barras) === t)?.produto_id) || null;
+    || prodPorId(d.codigos.find(c => String(c.codigo_barras) === t)?.produto_id);
+  if (exato || !aproximado) return exato || null;
+  // aproximado: mesmo nome sem acento/pontuação, ou um único produto que contém o que foi digitado, ou palavras em comum (nota fiscal)
+  const alvo = normBusca(t.replace(/ · .*$/, '')); if (alvo.length < 3) return null;
+  const lista = ativos();
+  const igual = lista.find(p => normBusca(p.nome) === alvo); if (igual) return igual;
+  const contem = lista.filter(p => normBusca(p.nome).includes(alvo) || alvo.includes(normBusca(p.nome)));
+  if (contem.length === 1) return contem[0];
+  const pal = alvo.split(' ');
+  const pontos = lista.map(p => { const pp = normBusca(p.nome).split(' '); const comuns = pal.filter(w => w.length > 1 && pp.includes(w)).length; return { p, ok: pp.length && comuns >= Math.max(2, Math.ceil(pp.length * 0.6)), comuns }; }).filter(x => x.ok).sort((a, b) => b.comuns - a.comuns);
+  return pontos.length && (pontos.length === 1 || pontos[0].comuns > pontos[1].comuns) ? pontos[0].p : null;
 }
 
 // ---------- compras
 function novaCompra(itens = []) { return { data: hoje(), fornecedor: '', forma: '', eventoId: '', observacao: '', itens: itens.length ? itens : [itemCompraVazio()] }; }
-function itemCompraVazio(p = null) { return { produto_id: p?.id ?? '', texto: p ? rotuloProduto(p) : '', quantidade: '', unidade: p ? (p.unidade_compra || p.unidade || 'un') : 'un', fator: p ? (p.unidade_compra ? Number(p.fator_compra || 1) : 1) : 1, valor: '', validade: '' }; }
+function itemCompraVazio(p = null) { return { produto_id: p?.id ?? '', texto: p ? rotuloProduto(p) : '', quantidade: '', unidade: p ? (p.unidade_compra || p.unidade || 'un') : 'un', fator: p ? (p.unidade_compra ? Number(p.fator_compra || 1) : 1) : 1, valor: '', valorUn: '', origem: '', validade: '' }; }
+const fmtNum = v => v === '' || v == null || !Number.isFinite(Number(v)) ? '' : String(Number(Number(v).toFixed(2))).replace('.', ',');
 
 function telaCompras() {
   const aberta = !!compra;
@@ -360,24 +372,29 @@ function opcoesEventosPlat(sel, { passados = true, futuros = true } = {}) {
     .sort((a, b) => Math.abs(new Date(a.q.data) - new Date()) - Math.abs(new Date(b.q.data) - new Date())).slice(0, 40);
   return evs.map(({ e, q }) => `<option value="${esc(e.id)}" ${sel === e.id ? 'selected' : ''}>${dataBR(q.data)} · ${esc(q.nome || q.cliente || 'Festa')}</option>`).join('');
 }
+function calcItemCompra(it) {
+  const p = prodPorId(it.produto_id); const q = numero(it.quantidade); const f = Number(it.fator || 1); const v = numero(it.valor);
+  if (!p || !(q > 0)) return '';
+  return `= <b>${qtd(q * f)} ${esc(p.unidade || 'un')}</b> no estoque${v > 0 ? ` · ${money(v / (q * f))} por ${esc(p.unidade || 'un')}` : ''}`;
+}
 function formCompra() {
   const c = compra;
   const fornecedores = [...new Set(d.compras.map(x => x.fornecedor).filter(Boolean))].sort();
   const total = c.itens.reduce((s, i) => s + (numero(i.valor) || 0), 0);
   const itens = c.itens.map((it, ix) => {
     const p = prodPorId(it.produto_id);
-    const q = numero(it.quantidade); const f = Number(it.fator || 1);
-    const emEstoque = q > 0 && p ? `= <b>${qtd(q * f)} ${esc(p.unidade || 'un')}</b>` : '';
-    const custoUn = q > 0 && numero(it.valor) > 0 && p ? ` · ${money(numero(it.valor) / (q * f))}/${esc(p.unidade || 'un')}` : '';
-    return `<div class="es-item" data-ix="${ix}">
-      <div class="field es-item__prod"><label>Produto</label><input list="esListaProd" data-c="texto" value="${esc(it.texto)}" placeholder="Digite o nome ou bipe o código" autocomplete="off">${p ? `<small>${setorIcone(p.setor)} ${esc(setorNome(p.setor))} · em estoque ${qtd(saldoDe(p.id))} ${esc(p.unidade || 'un')}</small>` : it.texto ? '<small class="es-alerta">Produto não encontrado. <a href="#" data-es="cadastrar-do-item">Cadastrar “' + esc(it.texto) + '”</a></small>' : ''}</div>
+    return `<div class="es-item es-item--compra" data-ix="${ix}">
+      <div class="field es-item__prod"><label>Produto</label><input list="esListaProd" data-c="texto" value="${esc(it.texto)}" placeholder="Nome ou código de barras" autocomplete="off">${p ? `<small>${setorIcone(p.setor)} ${esc(setorNome(p.setor))} · em estoque ${qtd(saldoDe(p.id))} ${esc(p.unidade || 'un')}</small>` : it.texto ? '<small class="es-alerta">Não achei este produto. <a href="#" data-es="cadastrar-do-item">Cadastrar “' + esc(it.texto) + '”</a></small>' : ''}</div>
       <div class="field es-item__q"><label>Quantidade</label><div class="es-conv"><input data-c="quantidade" inputmode="decimal" value="${esc(it.quantidade)}"><select data-c="unidade">${[...new Set([it.unidade, p?.unidade || 'un', ...UNIDADES])].map(u => `<option ${u === it.unidade ? 'selected' : ''}>${u}</option>`).join('')}</select></div>
-        ${p && it.unidade !== (p.unidade || 'un') ? `<div class="es-conv es-conv--fator"><span>1 ${esc(it.unidade)} =</span><input data-c="fator" inputmode="decimal" value="${esc(String(it.fator).replace('.', ','))}"><span>${esc(p.unidade || 'un')}</span></div>` : ''}<small>${emEstoque}</small></div>
-      <div class="field es-item__v"><label>Valor total do item</label><input data-c="valor" inputmode="decimal" value="${esc(it.valor)}" placeholder="R$"><small>${custoUn}</small></div>
+        ${p && it.unidade !== (p.unidade || 'un') ? `<div class="es-conv es-conv--fator"><span>1 ${esc(it.unidade)} =</span><input data-c="fator" inputmode="decimal" value="${esc(String(it.fator).replace('.', ','))}"><span>${esc(p.unidade || 'un')}</span></div>` : ''}</div>
+      <div class="field es-item__vu"><label>Valor por ${esc(it.unidade || 'un')}</label><input data-c="valorUn" inputmode="decimal" value="${esc(it.valorUn)}" placeholder="R$"></div>
+      <div class="field es-item__v"><label>Total do item</label><input data-c="valor" inputmode="decimal" value="${esc(it.valor)}" placeholder="R$"></div>
       <div class="field es-item__val"><label>Validade</label><input type="date" data-c="validade" value="${esc(it.validade)}"></div>
+      <small class="es-item__calc" data-calc>${calcItemCompra(it)}</small>
       <button type="button" class="es-x" data-es="tirar-item" title="Tirar item">✕</button></div>`;
   }).join('');
   return `<section class="panel es-form"><div class="panel-header"><div><span class="eyebrow">NOVA COMPRA</span><h2>Lançar compra</h2></div><button class="btn btn-ghost" type="button" data-es="cancelar-compra">Cancelar</button></div>
+    <div class="es-nota"><label class="btn btn-primary es-nota__btn">📷 Ler a nota pela foto<input type="file" id="cFotoNota" accept="image/*" capture="environment" hidden></label><span id="cNotaStatus" class="es-dica">Tire uma foto da nota ou do cupom: a plataforma preenche loja, data e itens. Depois é só conferir.</span></div>
     <div class="form-grid">
       <div class="field"><label>Data da compra</label><input type="date" id="cData" value="${esc(c.data)}" max="${hoje()}"></div>
       <div class="field"><label>Fornecedor / loja</label><input id="cFornecedor" list="esForn" value="${esc(c.fornecedor)}" placeholder="Ex.: Atacadão"><datalist id="esForn">${fornecedores.map(x => `<option value="${esc(x)}">`).join('')}</datalist></div>
@@ -387,7 +404,8 @@ function formCompra() {
     <datalist id="esListaProd">${opcoesProdutos()}</datalist>
     <div class="es-itens">${itens}</div>
     <div class="es-form__rodape"><div><button class="btn btn-ghost" type="button" data-es="mais-item">＋ Outro item</button><button class="btn btn-ghost" type="button" data-es="novo-produto-compra">Cadastrar produto novo</button></div>
-      <div class="es-total">Total da compra <strong>${money(total)}</strong></div></div>
+      <div class="es-total">Total da compra <strong data-total-compra>${money(total)}</strong></div></div>
+    <p class="es-dica">Dica: <b>Enter</b> passa para o próximo campo; no último, abre um novo item.</p>
     <div class="field"><label>Observação (opcional)</label><input id="cObs" value="${esc(c.observacao)}" placeholder="Ex.: nota 1234"></div>
     <div class="es-acoes"><button class="btn btn-primary" type="button" data-es="salvar-compra" ${ocupado ? 'disabled' : ''}>Salvar compra e dar entrada no estoque</button></div></section>`;
 }
@@ -399,6 +417,42 @@ function lerCabecalhoCompra(root) {
   compra.eventoId = root.querySelector('#cEvento')?.value ?? compra.eventoId;
   compra.observacao = root.querySelector('#cObs')?.value ?? compra.observacao;
 }
+// ---------- leitura da nota por foto (usa a mesma leitura por IA do controle de bebidas)
+const NOTA_URL = () => readJSON('lega.estoque.notaUrl', null) || 'https://controlebebidaslega.netlify.app/.netlify/functions/ler-nota';
+function reduzirFoto(arquivo, max = 1600, qualidade = 0.82) {
+  return new Promise((ok, erro) => { const url = URL.createObjectURL(arquivo); const img = new Image();
+    img.onload = () => { const k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight)); const cv = document.createElement('canvas'); cv.width = Math.round(img.naturalWidth * k); cv.height = Math.round(img.naturalHeight * k); cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height); URL.revokeObjectURL(url); ok(cv.toDataURL('image/jpeg', qualidade).split(',')[1]); };
+    img.onerror = () => { URL.revokeObjectURL(url); erro(new Error('Não consegui abrir a foto.')); }; img.src = url; });
+}
+async function lerNotaPorFoto(root, input) {
+  const arq = input.files?.[0]; if (!arq) return;
+  const msg = (t, cls = '') => { const st = root.querySelector('#cNotaStatus'); if (st) { st.className = `es-dica ${cls}`; st.innerHTML = t; } };
+  lerCabecalhoCompra(root);
+  try {
+    let token = await bebidasBanco.tokenAcesso();
+    if (!token) { msg('Para ler notas, entre uma vez com o <b>login do controle de bebidas</b>: <input id="cNotaEmail" type="email" placeholder="e-mail"> <input id="cNotaSenha" type="password" placeholder="senha"> <button type="button" class="btn btn-ghost btn-sm" id="cNotaEntrar">Entrar e ler</button>');
+      root.querySelector('#cNotaEntrar').onclick = async () => { try { await bebidasBanco.entrar(root.querySelector('#cNotaEmail').value.trim(), root.querySelector('#cNotaSenha').value); lerNotaPorFoto(root, input); } catch (e) { alert(e.message); } };
+      return; }
+    msg('📷 Lendo a nota… leva uns 10 segundos.');
+    const base64 = await reduzirFoto(arq);
+    const r = await fetch(NOTA_URL(), { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ imagem_base64: base64, mime_type: 'image/jpeg' }) }).catch(() => null);
+    if (!r) throw new Error('Não consegui falar com o serviço de leitura de notas (internet ou endereço do controle de bebidas).');
+    const dados = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(dados.erro || `Falha na leitura (${r.status}).`);
+    if (dados.fornecedor && !compra.fornecedor) compra.fornecedor = dados.fornecedor;
+    if (dados.data && dados.data <= hoje()) compra.data = dados.data;
+    const itens = (Array.isArray(dados.itens) ? dados.itens : []).filter(i => Number(i.quantidade) > 0);
+    let achados = 0;
+    const novos = itens.map(i => { const p = acharProduto(i.nome); if (p) achados++; const q = Number(i.quantidade); const un = Number(i.valor_unitario || 0);
+      return { ...itemCompraVazio(p), ...(p ? { unidade: p.unidade || 'un', fator: 1 } : { texto: i.nome || '' }), quantidade: fmtNum(q), valorUn: fmtNum(un), valor: fmtNum(q * un), origem: 'un' }; });
+    compra.itens = [...compra.itens.filter(i => i.texto || i.quantidade || i.valor), ...novos];
+    if (!compra.itens.length) compra.itens = [itemCompraVazio()];
+    desenhar();
+    msg(itens.length ? `✓ ${itens.length} item(ns) lidos da nota${achados < itens.length ? `; <b>${itens.length - achados}</b> não bateram com produtos cadastrados (em laranja: escolha o produto ou cadastre)` : ''}. Confira quantidades e valores antes de salvar.` : 'Não encontrei itens legíveis. Tente outra foto, com mais luz e a nota inteira.', itens.length ? 'es-ok' : 'es-alerta');
+  } catch (e) { msg(`Não foi possível ler a nota: ${esc(e.message)} Você pode digitar os itens normalmente.`, 'es-alerta'); }
+  finally { input.value = ''; }
+}
+
 async function salvarCompra(root) {
   lerCabecalhoCompra(root);
   const c = compra;
@@ -694,14 +748,36 @@ function ligar(root) {
     ['#cData', '#cFornecedor', '#cForma', '#cEvento', '#cObs'].forEach(s => q(s)?.addEventListener('change', () => lerCabecalhoCompra(root)));
     qa('.es-item').forEach(el => {
       const it = compra.itens[Number(el.dataset.ix)];
+      const ix = Number(el.dataset.ix);
+      const campo = k => el.querySelector(`[data-c="${k}"]`);
+      const atualizarCalculos = () => {
+        el.querySelector('[data-calc]').innerHTML = calcItemCompra(it);
+        const tot = compra.itens.reduce((s, i) => s + (numero(i.valor) || 0), 0);
+        const t = root.querySelector('[data-total-compra]'); if (t) t.textContent = money(tot);
+      };
       el.querySelectorAll('[data-c]').forEach(inp => {
         const k = inp.dataset.c;
-        inp.addEventListener(k === 'texto' ? 'change' : 'input', () => {
-          lerCabecalhoCompra(root);
-          if (k === 'texto') { it.texto = inp.value; const p = acharProduto(inp.value); if (p) { Object.assign(it, itemCompraVazio(p), { quantidade: it.quantidade, valor: it.valor, validade: it.validade }); } else it.produto_id = ''; desenhar(); const prox = root.querySelector(`.es-item[data-ix="${el.dataset.ix}"] [data-c="quantidade"]`); if (p) prox?.focus(); return; }
-          if (k === 'unidade') { it.unidade = inp.value; const p = prodPorId(it.produto_id); it.fator = p && inp.value === p.unidade_compra ? Number(p.fator_compra || 1) : 1; desenhar(); return; }
+        inp.addEventListener(k === 'texto' || k === 'unidade' ? 'change' : 'input', () => {
+          if (k === 'texto') { lerCabecalhoCompra(root); it.texto = inp.value; const p = acharProduto(inp.value); if (p) { Object.assign(it, itemCompraVazio(p), { quantidade: it.quantidade, valor: it.valor, valorUn: it.valorUn, origem: it.origem, validade: it.validade }); } else it.produto_id = ''; desenhar(); if (p) root.querySelector(`.es-item[data-ix="${ix}"] [data-c="quantidade"]`)?.focus(); return; }
+          if (k === 'unidade') { lerCabecalhoCompra(root); it.unidade = inp.value; const p = prodPorId(it.produto_id); it.fator = p && inp.value === p.unidade_compra ? Number(p.fator_compra || 1) : 1; desenhar(); return; }
           it[k] = k === 'fator' ? (numero(inp.value) || '') : inp.value;
-          if (k !== 'validade') { clearTimeout(inp._t); inp._t = setTimeout(() => { const pos = inp.selectionStart; desenhar(); const n = root.querySelector(`.es-item[data-ix="${el.dataset.ix}"] [data-c="${k}"]`); n?.focus(); try { n?.setSelectionRange(pos, pos); } catch { } }, 500); }
+          // valor por unidade ⇄ total: o que foi digitado por último manda
+          const q = numero(it.quantidade);
+          if (k === 'valorUn') { it.origem = 'un'; const un = numero(it.valorUn); it.valor = q > 0 && un >= 0 ? fmtNum(q * un) : it.valor; campo('valor').value = it.valor; }
+          else if (k === 'valor') { it.origem = 'total'; const v = numero(it.valor); it.valorUn = q > 0 && v >= 0 ? fmtNum(v / q) : it.valorUn; campo('valorUn').value = it.valorUn; }
+          else if (k === 'quantidade') { if (it.origem === 'un' && numero(it.valorUn) >= 0) { it.valor = q > 0 ? fmtNum(q * numero(it.valorUn)) : ''; campo('valor').value = it.valor; } else if (it.origem === 'total' && numero(it.valor) >= 0) { it.valorUn = q > 0 ? fmtNum(numero(it.valor) / q) : ''; campo('valorUn').value = it.valorUn; } }
+          atualizarCalculos();
+        });
+        // Enter avança: produto → quantidade → valor → total → próximo item
+        inp.addEventListener('keydown', ev => {
+          if (ev.key !== 'Enter') return; ev.preventDefault();
+          const ordem = ['texto', 'quantidade', 'valorUn', 'valor'];
+          const i = ordem.indexOf(k);
+          if (k === 'texto') { inp.dispatchEvent(new Event('change')); return; }
+          if (i >= 0 && i < ordem.length - 1) { const n = campo(ordem[i + 1]); n?.focus(); n?.select?.(); return; }
+          lerCabecalhoCompra(root);
+          if (ix === compra.itens.length - 1) compra.itens.push(itemCompraVazio());
+          desenhar(); root.querySelector(`.es-item[data-ix="${ix + 1}"] [data-c="texto"]`)?.focus();
         });
       });
       el.querySelector('[data-es="tirar-item"]').onclick = () => { lerCabecalhoCompra(root); compra.itens.splice(Number(el.dataset.ix), 1); if (!compra.itens.length) compra.itens.push(itemCompraVazio()); desenhar(); };
@@ -710,6 +786,7 @@ function ligar(root) {
     q('[data-es="mais-item"]')?.addEventListener('click', () => { lerCabecalhoCompra(root); compra.itens.push(itemCompraVazio()); desenhar(); const l = [...root.querySelectorAll('.es-item [data-c="texto"]')].at(-1); l?.focus(); });
     q('[data-es="novo-produto-compra"]')?.addEventListener('click', () => { lerCabecalhoCompra(root); modalProduto(null, pid => { const p = prodPorId(pid); if (p) { const vazio = compra.itens.findIndex(i => !i.texto); const novo = itemCompraVazio(p); if (vazio >= 0) compra.itens[vazio] = novo; else compra.itens.push(novo); } desenhar(); }); });
     q('[data-es="salvar-compra"]')?.addEventListener('click', () => salvarCompra(root));
+    q('#cFotoNota')?.addEventListener('change', ev => lerNotaPorFoto(root, ev.target));
   }
   qa('[data-es="excluir-compra"]').forEach(b => b.onclick = async () => {
     if (!confirm('Excluir esta compra? Os itens saem do estoque.')) return;

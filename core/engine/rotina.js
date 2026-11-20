@@ -59,7 +59,7 @@ export function tarefas(hoje = hojeISO()) {
     tipo: 'cobranca', prioridade: c.vencida ? 0 : 2, icone: c.vencida ? '💸' : '📅',
     titulo: `${c.vencida ? 'Cobrar' : 'Lembrar'} ${c.parcela.descricao.toLowerCase()} · ${money(c.parcela.valor)}`,
     detalhe: `${c.q.cliente || 'Cliente'} · ${c.q.nome || 'Festa'} · ${c.vencida ? 'venceu' : 'vence'} em ${dataBR(c.parcela.vencimento)}`,
-    eventoId: c.evento.id, aba: 'financeiro', whatsapp: c.whatsapp
+    eventoId: c.evento.id, aba: 'financeiro', whatsapp: c.whatsapp, parcelaId: c.parcela.id
   }));
   const ultimos30 = somarDias(hoje, -30);
   evs.filter(e => !['orcamento', 'perdido', 'realizado'].includes(e.status)).forEach(e => {
@@ -80,7 +80,7 @@ export function tarefas(hoje = hojeISO()) {
   const r = calcularMes(mes, null);
   r.fixas.filter(f => f.pendente).forEach(f => {
     const dia = `${mes}-${pad(Math.min(Number(f.dia || 1), 28))}`;
-    if (dia <= somarDias(hoje, 5)) out.push({ tipo: 'fixa', prioridade: dia < hoje ? 1 : 3, icone: '🧾', titulo: `Lançar ${f.descricao} (${money(f.valor)})`, detalhe: dia < hoje ? `venceu dia ${f.dia || 1}` : `vence dia ${f.dia || 1}`, rota: 'financeiro' });
+    if (dia <= somarDias(hoje, 5)) out.push({ tipo: 'fixa', prioridade: dia < hoje ? 1 : 3, icone: '🧾', titulo: `Lançar ${f.descricao} (${money(f.valor)})`, detalhe: dia < hoje ? `venceu dia ${f.dia || 1}` : `vence dia ${f.dia || 1}`, rota: 'financeiro', fixaId: f.id });
   });
   return out.sort((a, b) => a.prioridade - b.prioridade);
 }

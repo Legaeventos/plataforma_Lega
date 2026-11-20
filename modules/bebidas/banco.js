@@ -47,6 +47,9 @@ async function sessaoValida() {
   return s;
 }
 
+/** Token válido do login do controle de bebidas (usado pela leitura de nota por foto). */
+export async function tokenAcesso() { const s = await sessaoValida(); return s?.access_token || null; }
+
 const PAGINA = 1000;
 /**
  * Lê uma tabela inteira (caminho no formato do PostgREST, ex.: "produtos?select=*").

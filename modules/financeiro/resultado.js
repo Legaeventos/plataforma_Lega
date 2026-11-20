@@ -218,16 +218,25 @@ function modalFixa(id, aoSalvar) {
   };
 }
 
-function lancarFixa(id, mes, aoSalvar) {
+export function lancarFixa(id, mes, aoSalvar) {
   const f = config().despesasFixas.find(x => x.id === id); if (!f) return;
   const [y, m] = mes.split('-').map(Number); const ult = new Date(y, m, 0).getDate();
   const dia = `${mes}-${String(Math.min(f.dia || 1, ult)).padStart(2, '0')}`;
-  const valor = prompt(`Valor de ${f.descricao} em ${nomeMes(mes)} (R$):`, String(f.valor).replace('.', ','));
-  if (valor === null) return;
-  const n = Number(String(valor).replace(/\./g, '').replace(',', '.'));
-  if (!(n >= 0)) return alert('Valor inválido.');
-  writeJSON(GENERAL_KEY, [...gerais(), { id: uid('fin'), tipo: 'saida', descricao: f.descricao, categoria: f.categoria, valor: n, data: dia, forma: '', fixaId: f.id, createdAt: new Date().toISOString() }]);
-  aoSalvar();
+  const box = document.createElement('div'); box.className = 'lega-modal';
+  box.innerHTML = `<div class="lega-modal__card" role="dialog" aria-modal="true" style="max-width:460px"><span class="eyebrow">CONTA FIXA · ${esc(nomeMes(mes).toUpperCase())}</span><h2>${esc(f.descricao)}</h2>
+    <form class="form-grid" id="rmLancarFixa"><div class="field"><label>Valor deste mês (R$)</label><input name="valor" inputmode="decimal" required value="${String(f.valor).replace('.', ',')}"></div>
+    <div class="field"><label>Data</label><input name="data" type="date" required value="${dia}"></div>
+    <div class="field field-full form-actions"><button type="button" class="btn btn-ghost" data-m="fechar">Cancelar</button><button class="btn btn-primary">Lançar</button></div></form></div>`;
+  document.body.appendChild(box);
+  const fm = box.querySelector('#rmLancarFixa'); setTimeout(() => { fm.valor.focus(); fm.valor.select(); }, 30);
+  box.onclick = ev => { if (ev.target === box || ev.target.closest('[data-m="fechar"]')) box.remove(); };
+  fm.onsubmit = ev => {
+    ev.preventDefault();
+    const n = Number(String(fm.valor.value).replace(/\./g, '').replace(',', '.'));
+    if (!(n > 0)) return alert('Informe o valor.');
+    writeJSON(GENERAL_KEY, [...gerais(), { id: uid('fin'), tipo: 'saida', descricao: f.descricao, categoria: f.categoria, valor: n, data: fm.data.value, forma: '', fixaId: f.id, createdAt: new Date().toISOString() }]);
+    box.remove(); aoSalvar();
+  };
 }
 
 export function bindResultado(root, state, redesenhar, navigate) {

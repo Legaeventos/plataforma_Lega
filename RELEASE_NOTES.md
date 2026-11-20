@@ -1,3 +1,18 @@
+# v2.2.0 — Mais fácil de fazer
+
+- Botão ＋ fixo em todas as telas: Novo orçamento, Receber pagamento, Lançar despesa, Lançar compra e Consumo de festa, sem passar pelos menus.
+- Receber pagamento: escolhe a festa, a parcela em aberto já vem com valor e forma; um clique registra.
+- Lançar despesa: da casa/escritório (com categoria) ou de uma festa, num formulário curto.
+- Rotina do painel resolve ali mesmo: "✓ Recebido" nas cobranças e "Lançar agora" nas contas fixas (valor ajustável).
+- Compra mais rápida:
+  - 📷 Ler a nota pela foto (a mesma leitura por IA do controle de bebidas): preenche loja, data e itens, reconhecendo os produtos pelo nome.
+  - Busca de produto tolerante (sem acento, nome parcial, palavras da nota).
+  - Valor por unidade OU total do item (um calcula o outro); digitar não trava nem pula mais a tela.
+  - Enter avança: produto → quantidade → valor → total → próximo item.
+- Orçamento: campo "WhatsApp do cliente" com nomes já cadastrados; o cliente é cadastrado sozinho ao gerar o orçamento.
+- Cada versão do orçamento ganhou o botão WhatsApp com a mensagem pronta (anexe o PDF).
+- Conta fixa lançada num formulário curto (em vez da caixinha do navegador).
+
 # v2.1.0 — Rotina, cobranças, ficha da festa, relatórios e cópia de segurança
 
 - Hoje na Lega: faixa do mês (resultado até agora, recebido de clientes, parcelas vencidas) e "Rotina da semana" com tudo o que precisa ser feito: cobrar parcelas vencidas e lembrar as próximas (botão de WhatsApp com mensagem pronta), festas para encerrar ou com consumo sem lançar, cozinha das festas dos próximos 3 dias, contas fixas do mês, estoque no mínimo e lotes vencendo.
