@@ -1,3 +1,14 @@
+# v2.0.0 — Etapa 4: resultado mensal da empresa
+
+- Financeiro ganhou três abas: Resultado do mês (abre primeiro), Lançamentos e Despesas fixas.
+- Resultado do mês: festas do mês (receita − consumo do estoque − equipe − despesas da festa), despesas da casa e escritório por categoria, material de escritório comprado, perdas de estoque, pró-labore e o resultado final com margem.
+- Caixa do mês ao lado: pagamentos de clientes, compras, equipe, despesas — o dinheiro que de fato entrou e saiu.
+- "Para fechar o mês": despesas fixas ainda não lançadas (lançar com um clique, ajustando o valor) e festas do mês com consumo, equipe ou encerramento pendentes (o resultado aparece como provisório).
+- Despesas fixas: pró-labore já cadastrado com um salário mínimo (R$ 1.621 em 2026); acrescente aluguel, energia, internet, contador…
+- Lançamentos gerais agora têm categoria (aluguel, energia, água, internet, manutenção, limpeza, marketing, impostos, contador, sistemas, gás, pró-labore…).
+- Quadro do ano mês a mês, com total; clicar num mês abre o resultado dele.
+- Itens reutilizáveis comprados (decoração) aparecem como investimento, fora do resultado.
+
 # v1.9.0 — Etapa 3: consumo com receitas e planejamento da cozinha
 
 - Nova aba Estoque → Receitas: ficha dos extras (cachorro-quente, cumbucas…) com os ingredientes por porção e o custo da porção pelo custo médio atual.

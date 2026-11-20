@@ -1,7 +1,7 @@
 import { readJSON, writeJSON, syncInfo, localState, cloudState, localBackups, restoreFromBackup, syncNow } from '../../js/storage.js';
 import { DEFAULT_USER } from '../../js/config.js';
 import { CONFIG_PADRAO, createPriceTableForYear } from '../../core/engine/pricing.js';
-import { fotosSection, bindFotos } from './fotos.js?v=190';
+import { fotosSection, bindFotos } from './fotos.js?v=200';
 import { getContratada, saveContratada, contratadaPendencias } from '../eventos/contrato.js';
 const CT_FIELDS=[['razaoSocial','Razão social',true],['nomeFantasia','Nome fantasia'],['cnpj','CNPJ',true],['endereco','Endereço (rua e número)',true],['bairro','Bairro'],['cidade','Cidade',true],['estado','UF',true],['cep','CEP'],['telefone','Telefone/WhatsApp'],['email','E-mail'],['representante','Representante legal (quem assina)'],['representanteCpf','CPF do representante'],['representanteCargo','Cargo do representante'],['chavePix','Chave PIX para pagamentos'],['dadosBancarios','Dados bancários (opcional)'],['foro','Foro (comarca/UF)',true]];
 function contagem(st){const ev=Array.isArray(st?.['lega.eventos'])?st['lega.eventos']:[];return{eventos:ev.length,orcamentos:ev.reduce((n,e)=>n+(e.orcamentos||[]).length,0),contratos:ev.reduce((n,e)=>n+(e.contratos||[]).length,0),clientes:(st?.['lega.clientes']||[]).length}}
