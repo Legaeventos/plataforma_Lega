@@ -1,3 +1,12 @@
+# v1.9.0 — Etapa 3: consumo com receitas e planejamento da cozinha
+
+- Nova aba Estoque → Receitas: ficha dos extras (cachorro-quente, cumbucas…) com os ingredientes por porção e o custo da porção pelo custo médio atual.
+- No consumo da festa, a parte "Receitas (extras)": informar só as porções (ex.: 100 cachorros-quentes); a plataforma mostra e baixa cada ingrediente (100 pães, 6 kg de salsicha) e soma o custo. Ao reabrir, as porções voltam como foram lançadas.
+- Compras feitas "para uma festa" (bolo, doces, personalizados) já aparecem preenchidas no consumo daquela festa.
+- Depois de salvar o consumo de uma festa da plataforma, botão "← Voltar para a festa" (encerramento).
+- Evento → aba Consumo: em festas futuras, "Quanto fazer para N convidados" com a média de unidades por convidado de cada salgado nas festas anteriores; nas festas lançadas, unidades por convidado e extras.
+- Requer rodar de novo o texto do estoque no Supabase (a tela avisa).
+
 # v1.8.0 — Salgados: unidades na cozinha, kg no estoque
 
 - Produto pode ser marcado "A cozinha conta este produto em unidades" (salgados comprados em pacote de 2 kg com quantidade variável).

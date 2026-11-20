@@ -68,7 +68,7 @@ export async function carregar({ forcar = false } = {}) {
   if (!forcar && cache && Date.now() - cacheEm < 60000) return cache;
   if (carregando) return carregando;
   carregando = (async () => {
-    const [produtos, estoque, compras, comprasItens, lotes, eventos, eventosItens, consumos, movimentacoes, balancos, balancosItens, agenda, codigos] = await Promise.all([
+    const [produtos, estoque, compras, comprasItens, lotes, eventos, eventosItens, consumos, movimentacoes, balancos, balancosItens, agenda, codigos, receitas] = await Promise.all([
       lerTudo('est_produtos', 'select=*&order=nome.asc'),
       lerTudo('est_estoque'),
       lerTudo('est_compras', 'select=*&order=data.desc,id.desc'),
@@ -81,9 +81,10 @@ export async function carregar({ forcar = false } = {}) {
       lerTudo('est_balancos', 'select=*&order=data.desc,id.desc'),
       lerTudo('est_balancos_itens'),
       lerTudo('est_agenda', 'select=*&order=data.asc'),
-      lerTudo('est_codigos_barras')
+      lerTudo('est_codigos_barras'),
+      lerTudo('est_receitas', 'select=*&order=nome.asc').catch(() => [])   // existe a partir do banco v3
     ]);
-    cache = { produtos, estoque, compras, comprasItens, lotes, eventos, eventosItens, consumos, movimentacoes, balancos, balancosItens, agenda, codigos };
+    cache = { produtos, estoque, compras, comprasItens, lotes, eventos, eventosItens, consumos, movimentacoes, balancos, balancosItens, agenda, codigos, receitas };
     cacheEm = Date.now();
     return cache;
   })();

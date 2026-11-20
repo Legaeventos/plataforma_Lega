@@ -50,6 +50,8 @@ const setorDe = id => prodPorId(id)?.setor || 'bebidas';
 const unidadeDe = id => prodPorId(id)?.unidade || 'un';
 const ativos = () => (d?.produtos || []).filter(p => p.ativo !== false);
 const bancoV2 = () => Number(sit?.sqlVersao || 1) >= 2;
+const bancoV3 = () => Number(sit?.sqlVersao || 1) >= 3;
+const receitasAtivas = () => (d?.receitas || []).filter(r => r.ativo !== false);
 const doSetor = p => ui.setor === 'todos' || (p.setor || 'bebidas') === ui.setor;
 
 // ------------------------------------------------------------------ carregamento
@@ -71,7 +73,7 @@ function cabecalho() {
   return `<section class="events-header"><div><span class="eyebrow">COMPRAS E ESTOQUE</span><h2>Estoque</h2><p>Bebidas, alimentação, decoração e escritório: o que entra nas compras e o que sai nas festas.</p></div>
   ${v && d ? `<div class="bb-head-actions"><button class="btn btn-primary" type="button" data-es="ir" data-aba="compras" data-novo="1">＋ Lançar compra</button><button class="btn btn-ghost" type="button" data-es="ir" data-aba="consumo" data-novo="1">＋ Consumo de festa</button><button class="btn btn-ghost" type="button" data-es="atualizar">↻</button></div>` : ''}</section>`;
 }
-const ABAS = [['visao', 'Visão geral'], ['produtos', 'Produtos'], ['compras', 'Compras'], ['consumo', 'Consumo das festas'], ['conferencia', 'Conferência']];
+const ABAS = [['visao', 'Visão geral'], ['produtos', 'Produtos'], ['receitas', 'Receitas'], ['compras', 'Compras'], ['consumo', 'Consumo das festas'], ['conferencia', 'Conferência']];
 
 function avisoHtml() {
   if (!aviso) return '';
@@ -86,12 +88,13 @@ export function render() {
   else if (sit.instalado === null) corpo = `<section class="panel empty-state"><h3>Sem conexão com o banco da plataforma.</h3><p>${esc(sit.erro || '')}</p><button class="btn btn-primary" type="button" data-es="atualizar">Tentar de novo</button></section>`;
   else if (!(sit.virada || viradaLocal())) corpo = telaMigracao();
   else if (!d) corpo = '<section class="panel empty-state"><h3>Carregando produtos, compras e consumo…</h3></section>';
-  else corpo = `${bancoV2() ? '' : `<section class="panel es-atualizar"><div><b>🛠️ Atualização do banco disponível</b><p>Para usar a contagem de salgados em unidades, rode de novo o texto do estoque no Supabase (SQL Editor → New query → colar → Run). Pode rodar por cima: não apaga nada.</p></div><button class="btn btn-primary" type="button" data-es="copiar-sql">📋 Copiar o texto</button><button class="btn btn-ghost" type="button" data-es="atualizar">Já rodei</button></section>`}<nav class="bb-tabs">${ABAS.map(([k, t]) => `<button type="button" class="${ui.aba === k ? 'active' : ''}" data-es-aba="${k}">${t}</button>`).join('')}</nav>${avisoHtml()}${telaAba()}`;
+  else corpo = `${bancoV3() ? '' : `<section class="panel es-atualizar"><div><b>🛠️ Atualização do banco disponível</b><p>Para usar as receitas dos extras e a contagem de salgados em unidades, rode de novo o texto do estoque no Supabase (SQL Editor → New query → colar → Run). Pode rodar por cima: não apaga nada.</p></div><button class="btn btn-primary" type="button" data-es="copiar-sql">📋 Copiar o texto</button><button class="btn btn-ghost" type="button" data-es="atualizar">Já rodei</button></section>`}<nav class="bb-tabs">${ABAS.map(([k, t]) => `<button type="button" class="${ui.aba === k ? 'active' : ''}" data-es-aba="${k}">${t}</button>`).join('')}</nav>${avisoHtml()}${telaAba()}`;
   return `<div class="page-grid estoque-module">${cabecalho()}${corpo}</div>`;
 }
 
 function telaAba() {
   if (ui.aba === 'produtos') return telaProdutos();
+  if (ui.aba === 'receitas') return telaReceitas();
   if (ui.aba === 'compras') return telaCompras();
   if (ui.aba === 'consumo') return telaConsumo();
   if (ui.aba === 'conferencia') return telaConferencia();
@@ -252,6 +255,74 @@ function modalProduto(id = null, aoSalvar = null, setorInicial = null) {
   setTimeout(() => f.nome.focus(), 30);
 }
 
+// ---------- receitas (fichas técnicas dos extras)
+function custoPorcao(r) { return (r.itens || []).reduce((s, i) => s + Number(i.quantidade || 0) * Number(estDe(i.produto_id)?.custo_medio || 0), 0); }
+function usoReceita(rid) {
+  const evs = d.eventos.filter(e => (e.receitas || []).some(x => String(x.receita_id) === String(rid)));
+  const porcoes = evs.reduce((a, e) => a + (e.receitas || []).filter(x => String(x.receita_id) === String(rid)).reduce((b, x) => b + Number(x.porcoes || 0), 0), 0);
+  return { festas: evs.length, porcoes };
+}
+function telaReceitas() {
+  if (!bancoV3()) return '<section class="panel empty-state"><h3>Receitas precisam da atualização do banco.</h3><p>Use o aviso amarelo acima: copiar o texto e rodar no Supabase.</p></section>';
+  const lista = (d.receitas || []).slice().sort((a, b) => (a.ativo === false) - (b.ativo === false) || String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
+  const cards = lista.map(r => { const u = usoReceita(r.id); return `<button type="button" class="panel es-receita ${r.ativo === false ? 'es-inativo' : ''}" data-es="editar-receita" data-id="${r.id}">
+    <strong>${esc(r.nome)}</strong><span>Custo por ${esc(r.rendimento || 'porção')}: <b>${money(custoPorcao(r))}</b></span>
+    <small>${(r.itens || []).map(i => `${qtd(i.quantidade)} ${esc(unidadeDe(i.produto_id))} ${esc(prodPorId(i.produto_id)?.nome || '?')}`).join(' · ') || 'Sem ingredientes'}</small>
+    ${u.festas ? `<em>${u.festas} festa(s) · ${qtd(u.porcoes, 0)} ${esc(r.rendimento || 'porção')}(s)</em>` : ''}</button>`; }).join('');
+  return `<section class="panel"><div class="panel-header"><div><h2>Receitas dos extras</h2><p>Cachorro-quente, cumbucas e outros extras feitos com ingredientes do estoque. No consumo da festa vocês informam só as porções, e a plataforma baixa cada ingrediente.</p></div><button class="btn btn-primary" type="button" data-es="nova-receita">＋ Nova receita</button></div>
+    ${cards ? `<div class="es-receitas">${cards}</div>` : '<p class="es-dica">Nenhuma receita ainda. Ex.: <b>Cachorro-quente</b> = 1 pão + 0,06 kg de salsicha + 0,03 kg de molho, por porção.</p>'}</section>`;
+}
+function modalReceita(id = null) {
+  const r = id ? (d.receitas || []).find(x => String(x.id) === String(id)) : { nome: '', rendimento: 'porção', itens: [], ativo: true };
+  let itens = (r.itens || []).map(i => ({ produto_id: i.produto_id, texto: prodPorId(i.produto_id) ? rotuloProduto(prodPorId(i.produto_id)) : '', quantidade: String(i.quantidade ?? '').replace('.', ',') }));
+  if (!itens.length) itens = [{ produto_id: '', texto: '', quantidade: '' }];
+  const box = document.createElement('div'); box.className = 'lega-modal'; box.id = 'esModal';
+  let redesenhando = false;
+  const desenharM = () => {
+    if (redesenhando) return; redesenhando = true;
+    try { const a = document.activeElement; if (a && box.contains(a)) a.blur(); desenharMInterno(); } finally { redesenhando = false; }
+  };
+  const desenharMInterno = () => {
+    const custo = itens.reduce((s, i) => s + (numero(i.quantidade) || 0) * Number(estDe(i.produto_id)?.custo_medio || 0), 0);
+    box.innerHTML = `<div class="lega-modal__card es-modal" role="dialog" aria-modal="true"><span class="eyebrow">${id ? 'EDITAR RECEITA' : 'NOVA RECEITA'}</span><h2>${id ? esc(r.nome) : 'Receita de extra'}</h2>
+      <form id="esRecForm" class="form-grid">
+        <div class="field"><label>Nome</label><input name="nome" required value="${esc(r.nome || '')}" placeholder="Ex.: Cachorro-quente"></div>
+        <div class="field"><label>Os ingredientes abaixo são para 1</label><select name="rendimento">${['porção', 'unidade', 'convidado'].map(x => `<option ${r.rendimento === x ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
+        <datalist id="esListaIng">${ativos().filter(p => p.tipo_item !== 'reutilizavel').sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR')).map(p => `<option value="${esc(rotuloProduto(p))}">`).join('')}</datalist>
+        <div class="field field-full"><label>Ingredientes</label><div class="es-ings">${itens.map((i, ix) => { const p = prodPorId(i.produto_id); return `<div class="es-ing" data-ix="${ix}"><input list="esListaIng" data-r="texto" value="${esc(i.texto)}" placeholder="Produto do estoque"><input data-r="quantidade" inputmode="decimal" value="${esc(i.quantidade)}" placeholder="qtd."><span>${p ? esc(p.unidade || 'un') : ''}</span><button type="button" class="es-x" data-r="tirar">✕</button></div>${i.texto && !p ? '<small class="es-alerta">Produto não encontrado: cadastre em Produtos.</small>' : ''}`; }).join('')}</div>
+          <button type="button" class="btn btn-ghost btn-sm" data-r="mais">＋ Ingrediente</button><p class="es-dica">Custo de 1 ${esc(r.rendimento || 'porção')} hoje (custo médio): <b>${money(custo)}</b></p></div>
+        <div class="field"><label>Situação</label><select name="ativo"><option value="1" ${r.ativo !== false ? 'selected' : ''}>Em uso</option><option value="0" ${r.ativo === false ? 'selected' : ''}>Não uso mais</option></select></div>
+        <div class="field"><label>Observação</label><input name="observacao" value="${esc(r.observacao || '')}"></div>
+        <div class="field field-full form-actions"><button type="button" class="btn btn-ghost" data-m="fechar">Cancelar</button><button class="btn btn-primary">${id ? 'Salvar' : 'Cadastrar receita'}</button></div>
+      </form></div>`;
+    const f = box.querySelector('#esRecForm');
+    const lerTopo = () => { r.nome = f.nome.value; r.rendimento = f.rendimento.value; r.ativo = f.ativo.value === '1'; r.observacao = f.observacao.value; };
+    box.querySelectorAll('.es-ing').forEach(el => {
+      const it = itens[Number(el.dataset.ix)];
+      el.querySelector('[data-r="texto"]').onchange = ev => { lerTopo(); it.texto = ev.target.value; const p = acharProduto(ev.target.value); it.produto_id = p ? p.id : ''; if (p) it.texto = rotuloProduto(p); desenharM(); box.querySelector(`.es-ing[data-ix="${el.dataset.ix}"] [data-r="quantidade"]`)?.focus(); };
+      el.querySelector('[data-r="quantidade"]').onchange = ev => { lerTopo(); it.quantidade = ev.target.value; desenharM(); };
+      el.querySelector('[data-r="tirar"]').onclick = () => { lerTopo(); itens.splice(Number(el.dataset.ix), 1); if (!itens.length) itens.push({ produto_id: '', texto: '', quantidade: '' }); desenharM(); };
+    });
+    box.querySelector('[data-r="mais"]').onclick = () => { lerTopo(); itens.push({ produto_id: '', texto: '', quantidade: '' }); desenharM(); [...box.querySelectorAll('[data-r="texto"]')].at(-1)?.focus(); };
+    box.querySelector('[data-m="fechar"]').onclick = () => box.remove();
+    f.onsubmit = async ev => {
+      ev.preventDefault(); lerTopo();
+      const validos = itens.filter(i => i.texto || i.quantidade);
+      if (!r.nome.trim()) return alert('Informe o nome da receita.');
+      if (validos.some(i => !i.produto_id)) return alert('Há ingrediente que não é produto do estoque.');
+      if (validos.some(i => !(numero(i.quantidade) > 0))) return alert('Informe a quantidade de cada ingrediente (ex.: 1 ou 0,06).');
+      if (!validos.length) return alert('Adicione pelo menos um ingrediente.');
+      const linha = { nome: r.nome.trim(), rendimento: r.rendimento, ativo: r.ativo, observacao: (r.observacao || '').trim() || null, itens: validos.map(i => ({ produto_id: Number(i.produto_id), quantidade: numero(i.quantidade) })), updated_at: new Date().toISOString() };
+      try {
+        if (id) await platRest('PATCH', `est_receitas?id=eq.${id}`, linha, 'return=minimal'); else await platRest('POST', 'est_receitas', [linha], 'return=minimal');
+        await recarregarDados(); box.remove(); aviso = { tipo: 'ok', texto: `✓ Receita ${esc(linha.nome)} salva.` }; desenhar();
+      } catch (e) { alert(`Não foi possível salvar: ${e.message}`); }
+    };
+  };
+  document.body.appendChild(box); desenharM();
+  box.onclick = ev => { if (ev.target === box) box.remove(); };
+}
+
 // ---------- seletor de produto (nome ou código de barras)
 function rotuloProduto(p) { return `${p.nome} · ${setorNome(p.setor)}`; }
 function opcoesProdutos(setor) {
@@ -362,7 +433,7 @@ async function salvarCompra(root) {
 
 // ---------- consumo das festas
 function novoConsumo(eventoPlataforma = '') {
-  const c = { id: null, eventoPlataforma, nome: '', data: hoje(), adultos: '', criancas: '', tipo: 'fechada', alcool: 'sem_adesao', rolha: false, valorRolha: '', observacao: '', setor: 'todos', itens: [] };
+  const c = { id: null, eventoPlataforma, nome: '', data: hoje(), adultos: '', criancas: '', tipo: 'fechada', alcool: 'sem_adesao', rolha: false, valorRolha: '', observacao: '', setor: 'todos', itens: [], receitas: [], doEvento: 0 };
   if (eventoPlataforma) preencherDoEvento(c, eventoPlataforma);
   if (!c.itens.length) c.itens = [itemConsumoVazio()];
   return c;
@@ -377,7 +448,13 @@ function preencherDoEvento(c, id) {
   const pol = e.alcoolicasPolitica || 'Por adesão';
   c.alcool = pol === 'Por adesão' ? 'adesao' : pol === 'Não haverá' ? 'sem_alcool' : 'sem_adesao';
   const existente = d.eventos.find(x => x.plataforma_evento_id === id);
-  if (existente) carregarConsumoExistente(c, existente);
+  if (existente) { carregarConsumoExistente(c, existente); return; }
+  // compras feitas para esta festa (bolo, doces, personalizados) já entram no consumo
+  const compras = d.compras.filter(x => x.plataforma_evento_id === id).map(x => String(x.id));
+  const porProduto = new Map();
+  d.comprasItens.filter(i => compras.includes(String(i.compra_id))).forEach(i => porProduto.set(String(i.produto_id), (porProduto.get(String(i.produto_id)) || 0) + Number(i.quantidade || 0)));
+  const itens = [...porProduto].map(([pid, q]) => { const p = prodPorId(pid); return p ? { ...itemConsumoVazio(p), consumido: String(Number(q.toFixed(3))).replace('.', ',') } : null; }).filter(Boolean);
+  if (itens.length) { c.itens = [...c.itens.filter(i => i.texto), ...itens]; c.doEvento = itens.length; }
 }
 function carregarConsumoExistente(c, ev) {
   c.id = ev.id; c.nome = ev.nome_evento; c.data = String(ev.data).slice(0, 10); c.adultos = String(ev.adultos ?? ''); c.criancas = String(ev.criancas ?? '');
@@ -385,7 +462,8 @@ function carregarConsumoExistente(c, ev) {
   c.rolha = !!ev.rolha_cobrada; c.valorRolha = ev.valor_rolha ? String(ev.valor_rolha).replace('.', ',') : ''; c.observacao = ev.observacao || '';
   c.eventoPlataforma = ev.plataforma_evento_id || c.eventoPlataforma || '';
   const bar = ev.controle_bar || {};
-  c.itens = d.eventosItens.filter(i => String(i.evento_id) === String(ev.id)).map(i => {
+  c.receitas = (ev.receitas || []).map(x => ({ receita_id: x.receita_id, porcoes: String(x.porcoes ?? '').replace('.', ',') }));
+  c.itens = d.eventosItens.filter(i => String(i.evento_id) === String(ev.id) && (i.receita_id == null || !c.receitas.length)).map(i => {
     const p = prodPorId(i.produto_id); const b = bar[String(i.produto_id)] || {};
     return { produto_id: i.produto_id, texto: p ? rotuloProduto(p) : `#${i.produto_id}`, levado: b.levado != null ? String(b.levado) : '', devolvido: b.levado != null && b.devolvido != null ? String(b.devolvido) : '',
       unidades: Number(i.quantidade_unidades) > 0 ? String(Number(i.quantidade_unidades)).replace('.', ',') : '', sugerido: false,
@@ -416,6 +494,12 @@ function telaConsumo() {
     ${semConsumo.length ? `<p class="es-alerta">${semConsumo.length} festa(s) recente(s) sem consumo lançado.</p>` : ''}</div><div class="guide-card__actions">${semConsumo[0] ? `<button class="btn btn-primary" type="button" data-es="consumo-evento" data-evento="${esc(semConsumo[0].id)}">Lançar: ${esc(quoteDe(semConsumo[0]).nome || quoteDe(semConsumo[0]).cliente)}</button>` : ''}<button class="btn ${semConsumo[0] ? 'btn-ghost' : 'btn-primary'}" type="button" data-es="novo-consumo">＋ Lançar consumo</button></div></section>`}
   <section class="panel"><div class="panel-header"><div><h2>Consumo lançado</h2></div></div>${filtroSetor()}<div class="table-wrap"><table class="bb-table"><thead><tr><th>Data</th><th>Festa</th><th>Itens</th><th>Custo</th><th>Venda</th><th></th></tr></thead><tbody>${linhas || '<tr><td colspan="6">Nenhum consumo neste filtro.</td></tr>'}</tbody></table></div></section>`;
 }
+function expandirReceitas(c) {
+  const out = [];
+  (c.receitas || []).forEach(x => { const r = (d.receitas || []).find(y => String(y.id) === String(x.receita_id)); const n = numero(x.porcoes) || 0; if (!r || !(n > 0)) return;
+    (r.itens || []).forEach(i => out.push({ produto_id: Number(i.produto_id), quantidade: Number((Number(i.quantidade) * n).toFixed(3)), receita_id: Number(r.id) })); });
+  return out;
+}
 function formConsumo() {
   const c = consumo;
   const setorVis = c.setor;
@@ -438,7 +522,9 @@ function formConsumo() {
       <div class="field"><label>Preço de venda</label><input data-k="preco" inputmode="decimal" value="${esc(it.preco)}" placeholder="se cobrado"></div>
       <button type="button" class="es-x" data-es="tirar-consumo" title="Tirar item">✕</button></div>`;
   }).join('');
-  const custoEstim = c.itens.reduce((s, it) => { const p = prodPorId(it.produto_id); return s + (p ? consumidoDe(it) * Number(estDe(p.id)?.custo_medio || 0) : 0); }, 0);
+  const expandidas = expandirReceitas(c);
+  const custoReceitas = expandidas.reduce((s, x) => s + x.quantidade * Number(estDe(x.produto_id)?.custo_medio || 0), 0);
+  const custoEstim = custoReceitas + c.itens.reduce((s, it) => { const p = prodPorId(it.produto_id); return s + (p ? consumidoDe(it) * Number(estDe(p.id)?.custo_medio || 0) : 0); }, 0);
   const venda = c.itens.reduce((s, it) => s + consumidoDe(it) * (numero(it.preco) || 0), 0);
   return `<section class="panel es-form"><div class="panel-header"><div><span class="eyebrow">${c.id ? 'EDITAR CONSUMO' : 'CONSUMO DA FESTA'}</span><h2>${c.id ? esc(c.nome) : 'Lançar consumo'}</h2></div><button class="btn btn-ghost" type="button" data-es="cancelar-consumo">Cancelar</button></div>
     <div class="form-grid">
@@ -454,7 +540,10 @@ function formConsumo() {
     <datalist id="esListaProd">${opcoesProdutos()}</datalist>
     <div class="es-filtro"><span class="es-dica">Mostrar itens de:</span><div class="ft-filtro" style="border:0;padding:0;margin:0">${[['todos', 'Todos'], ...SETORES].map(([k, t]) => `<button type="button" class="${setorVis === k ? 'on' : ''}" data-es="setor-consumo" data-setor="${k}">${t}</button>`).join('')}</div><button class="btn btn-ghost btn-sm" type="button" data-es="itens-padrao">Trazer produtos do setor</button></div>
     <p class="es-dica">Preencha <b>Levado</b> e <b>Voltou</b> (o consumido é calculado) ou direto o <b>Consumido</b>. Itens sem quantidade são ignorados.</p>
+    ${c.doEvento ? `<p class="es-ok">🎂 ${c.doEvento} item(ns) comprado(s) para esta festa já vieram preenchidos. Confira as quantidades.</p>` : ''}
     <div class="es-itens">${itens}</div>
+    ${bancoV3() ? `<div class="es-rec-bloco"><h3>Receitas (extras)</h3>${receitasAtivas().length ? `${(c.receitas || []).map((x, ix) => { const r = (d.receitas || []).find(y => String(y.id) === String(x.receita_id)); const n = numero(x.porcoes) || 0;
+        return `<div class="es-rec-linha" data-rix="${ix}"><select data-rk="receita_id"><option value="">Escolha a receita</option>${receitasAtivas().map(y => `<option value="${y.id}" ${String(y.id) === String(x.receita_id) ? 'selected' : ''}>${esc(y.nome)}</option>`).join('')}</select><input data-rk="porcoes" inputmode="decimal" value="${esc(x.porcoes)}" placeholder="${esc(r?.rendimento || 'porção')}s"><span>${r && n > 0 ? `= ${(r.itens || []).map(i => `${qtd(i.quantidade * n)} ${esc(unidadeDe(i.produto_id))} ${esc(prodPorId(i.produto_id)?.nome || '')}`).join(' · ')} · ${money(custoPorcao(r) * n)}` : ''}</span><button type="button" class="es-x" data-es="tirar-receita">✕</button></div>`; }).join('')}<button class="btn btn-ghost btn-sm" type="button" data-es="mais-receita">＋ Receita</button>` : '<p class="es-dica">Cadastre as receitas dos extras (cachorro-quente, cumbucas) na aba <b>Receitas</b> para lançar só as porções aqui.</p>'}</div>` : ''}
     <div class="es-form__rodape"><div><button class="btn btn-ghost" type="button" data-es="mais-consumo">＋ Outro item</button></div><div class="es-total">Custo estimado <strong>${money(custoEstim)}</strong>${venda ? ` · Venda <strong>${money(venda)}</strong>` : ''}</div></div>
     <div class="field"><label>Observação (opcional)</label><input id="kObs" value="${esc(c.observacao)}"></div>
     <div class="es-acoes">${c.id ? '<button class="btn btn-ghost" type="button" data-es="excluir-consumo">Excluir este consumo</button>' : ''}<button class="btn btn-primary" type="button" data-es="salvar-consumo" ${ocupado ? 'disabled' : ''}>${c.id ? 'Salvar alterações' : 'Salvar e baixar do estoque'}</button></div></section>`;
@@ -483,7 +572,10 @@ async function salvarConsumo(root) {
   for (const i of usados) { const p = prodPorId(i.produto_id); if (!p?.conta_unidades || !bancoV2()) continue;
     if (numero(i.unidades) > 0 && !(consumidoDe(i) > 0)) return alert(`Informe o peso aproximado de ${p.nome} (${i.unidades} un). É com ele que a plataforma aprende a média e baixa o estoque.`);
     if (consumidoDe(i) > 0 && !(numero(i.unidades) > 0) && !confirm(`${p.nome}: faltou informar quantas unidades a cozinha fez. Sem isso, este lançamento não ensina a média. Salvar assim mesmo?`)) return; }
-  if (!usados.some(i => consumidoDe(i) > 0) && !confirm('Nenhum item com quantidade consumida. Salvar mesmo assim?')) return;
+  const linhasRec = (c.receitas || []).filter(x => x.receita_id || x.porcoes);
+  if (linhasRec.some(x => !x.receita_id || !(numero(x.porcoes) > 0))) return alert('Em Receitas, escolha a receita e informe as porções (ou tire a linha).');
+  const expandidas = expandirReceitas(c);
+  if (!usados.some(i => consumidoDe(i) > 0) && !expandidas.length && !confirm('Nenhum item com quantidade consumida. Salvar mesmo assim?')) return;
   const semVolta = usados.filter(i => i.levado !== '' && (i.devolvido === '' || i.devolvido == null));
   if (semVolta.length && !confirm(`${semVolta.length} produto(s) com "Levado" mas sem "Voltou": tudo o que foi levado conta como consumido.\n\nSalvar assim mesmo?`)) return;
   if (c.alcool === 'sem_alcool') { const alc = usados.filter(i => consumidoDe(i) > 0 && prodPorId(i.produto_id)?.somente_adultos === true); if (alc.length && !confirm(`Festa marcada SEM bebida alcoólica, mas há bebida de adulto lançada: ${alc.map(i => prodPorId(i.produto_id)?.nome).join(', ')}.\n\nSalvar assim mesmo?`)) return; }
@@ -492,14 +584,15 @@ async function salvarConsumo(root) {
   const payload = { id: c.id, nome_evento: c.nome.trim(), data: c.data, adultos: Math.round(numero(c.adultos) || 0), criancas: Math.round(numero(c.criancas) || 0), observacao: c.observacao.trim(),
     tipo_evento: c.tipo, alcoolico_adesao: c.alcool === 'adesao', sem_alcool: c.alcool === 'sem_alcool', rolha_cobrada: c.rolha, valor_rolha: c.rolha ? numero(c.valorRolha) : 0,
     controle_bar: Object.keys(controle).length ? controle : null, plataforma_evento_id: c.eventoPlataforma || null,
-    itens: usados.filter(i => consumidoDe(i) > 0).map(i => ({ produto_id: Number(i.produto_id), quantidade: consumidoDe(i), preco_unitario: numero(i.preco) || 0, ...(numero(i.unidades) > 0 ? { unidades: Math.round(numero(i.unidades)) } : {}) })) };
+    receitas: linhasRec.map(x => ({ receita_id: Number(x.receita_id), nome: (d.receitas || []).find(y => String(y.id) === String(x.receita_id))?.nome || '', porcoes: numero(x.porcoes) })),
+    itens: [...usados.filter(i => consumidoDe(i) > 0).map(i => ({ produto_id: Number(i.produto_id), quantidade: consumidoDe(i), preco_unitario: numero(i.preco) || 0, ...(numero(i.unidades) > 0 ? { unidades: Math.round(numero(i.unidades)) } : {}) })), ...expandidas] };
   ocupado = true; desenhar();
   try {
     const eid = await rpc('est_registrar_consumo', { p: payload });
     await recarregarDados();
     const ev = d.eventos.find(x => String(x.id) === String(eid));
     if (ev?.plataforma_evento_id) resumirNoEvento(ev);
-    aviso = { tipo: 'ok', texto: `✓ Consumo de ${esc(payload.nome_evento)} salvo: ${payload.itens.length} item(ns), custo ${money(ev ? custoEvento(ev) : 0)}. Estoque atualizado.${ev?.plataforma_evento_id ? ' O custo já aparece no resultado da festa.' : ''}` };
+    aviso = { tipo: 'ok', texto: `✓ Consumo de ${esc(payload.nome_evento)} salvo: ${payload.itens.length} item(ns), custo ${money(ev ? custoEvento(ev) : 0)}. Estoque atualizado.${ev?.plataforma_evento_id ? ` O custo já aparece no resultado da festa. <button type="button" class="btn btn-ghost btn-sm" data-es="voltar-festa" data-evento="${esc(ev.plataforma_evento_id)}">← Voltar para a festa</button>` : ''}` };
     consumo = null;
   } catch (e) { aviso = { tipo: 'erro', texto: `Não foi possível salvar o consumo: ${esc(e.message)}` }; }
   ocupado = false; desenhar(); window.scrollTo(0, 0);
@@ -507,8 +600,8 @@ async function salvarConsumo(root) {
 
 // Resumo do consumo dentro do evento da plataforma (resultado da festa)
 function resumirNoEvento(ev) {
-  const itens = d.eventosItens.filter(i => String(i.evento_id) === String(ev.id)).map(i => { const p = prodPorId(i.produto_id); return { produtoId: i.produto_id, produto: p?.nome || `#${i.produto_id}`, setor: p?.setor || 'bebidas', quantidade: Number(i.quantidade || 0), unidade: p?.unidade || 'un', unidades: Number(i.quantidade_unidades || 0) || null, custo: Number(i.custo_total || 0), venda: Number(i.valor_total || 0) }; });
-  const resumo = { estEventoId: ev.id, custo: itens.reduce((s, i) => s + i.custo, 0), venda: itens.reduce((s, i) => s + i.venda, 0), rolha: ev.rolha_cobrada ? Number(ev.valor_rolha || 0) : 0, itens, atualizadoEm: new Date().toISOString() };
+  const itens = d.eventosItens.filter(i => String(i.evento_id) === String(ev.id)).map(i => { const p = prodPorId(i.produto_id); return { produtoId: i.produto_id, produto: p?.nome || `#${i.produto_id}`, setor: p?.setor || 'bebidas', quantidade: Number(i.quantidade || 0), unidade: p?.unidade || 'un', unidades: Number(i.quantidade_unidades || 0) || null, receita: i.receita_id != null ? ((d.receitas || []).find(r => String(r.id) === String(i.receita_id))?.nome || 'Receita') : null, custo: Number(i.custo_total || 0), venda: Number(i.valor_total || 0) }; });
+  const resumo = { estEventoId: ev.id, receitas: (ev.receitas || []).map(x => ({ nome: x.nome, porcoes: Number(x.porcoes || 0) })), convidados: Number(ev.adultos || 0) + Number(ev.criancas || 0), custo: itens.reduce((s, i) => s + i.custo, 0), venda: itens.reduce((s, i) => s + i.venda, 0), rolha: ev.rolha_cobrada ? Number(ev.valor_rolha || 0) : 0, itens, atualizadoEm: new Date().toISOString() };
   const evs = eventosPlataforma();
   writeJSON(EVENTOS_KEY, evs.map(e => e.id !== ev.plataforma_evento_id ? e : { ...e, consumoEstoque: resumo, historico: [...(e.historico || []), { id: `hist_${Date.now().toString(36)}`, label: e.consumoEstoque ? 'Consumo da festa atualizado' : 'Consumo da festa lançado', detail: `${itens.length} item(ns) · custo ${money(resumo.custo)}`, at: new Date().toISOString() }] }));
 }
@@ -588,6 +681,9 @@ function ligar(root) {
     ocupado = false; desenhar();
   });
   if (!d) return;
+  qa('[data-es="voltar-festa"]').forEach(b => b.onclick = () => { try { localStorage.setItem('lega.navigation.request', JSON.stringify({ eventId: b.dataset.evento, tab: 'encerramento' })); } catch { } location.hash = 'eventos'; });
+  qa('[data-es="nova-receita"]').forEach(b => b.onclick = () => modalReceita());
+  qa('[data-es="editar-receita"]').forEach(b => b.onclick = () => modalReceita(b.dataset.id));
   // visão geral
   qa('[data-es="consumo-evento"]').forEach(b => b.onclick = () => { consumo = novoConsumo(b.dataset.evento); ir('consumo'); });
   q('[data-es="comprar-baixos"]')?.addEventListener('click', () => { compra = novaCompra(abaixoMinimo(ativos()).map(p => itemCompraVazio(p))); ir('compras'); });
@@ -659,6 +755,11 @@ function ligar(root) {
       });
       el.querySelector('[data-es="tirar-consumo"]').onclick = () => { lerCabecalhoConsumo(root); consumo.itens.splice(Number(el.dataset.ix), 1); if (!consumo.itens.length) consumo.itens.push(itemConsumoVazio()); desenhar(); };
     });
+    qa('.es-rec-linha').forEach(el => { const x = consumo.receitas[Number(el.dataset.rix)];
+      el.querySelector('[data-rk="receita_id"]').onchange = ev => { lerCabecalhoConsumo(root); x.receita_id = ev.target.value; desenhar(); root.querySelector(`.es-rec-linha[data-rix="${el.dataset.rix}"] [data-rk="porcoes"]`)?.focus(); };
+      el.querySelector('[data-rk="porcoes"]').onchange = ev => { lerCabecalhoConsumo(root); x.porcoes = ev.target.value; desenhar(); };
+      el.querySelector('[data-es="tirar-receita"]').onclick = () => { lerCabecalhoConsumo(root); consumo.receitas.splice(Number(el.dataset.rix), 1); desenhar(); }; });
+    q('[data-es="mais-receita"]')?.addEventListener('click', () => { lerCabecalhoConsumo(root); consumo.receitas = consumo.receitas || []; consumo.receitas.push({ receita_id: '', porcoes: '' }); desenhar(); });
     q('[data-es="mais-consumo"]')?.addEventListener('click', () => { lerCabecalhoConsumo(root); consumo.itens.push(itemConsumoVazio()); desenhar(); [...root.querySelectorAll('.es-item [data-k="texto"]')].at(-1)?.focus(); });
     q('[data-es="salvar-consumo"]')?.addEventListener('click', () => salvarConsumo(root));
     q('[data-es="excluir-consumo"]')?.addEventListener('click', async () => {
