@@ -1,3 +1,12 @@
+# v2.1.0 — Rotina, cobranças, ficha da festa, relatórios e cópia de segurança
+
+- Hoje na Lega: faixa do mês (resultado até agora, recebido de clientes, parcelas vencidas) e "Rotina da semana" com tudo o que precisa ser feito: cobrar parcelas vencidas e lembrar as próximas (botão de WhatsApp com mensagem pronta), festas para encerrar ou com consumo sem lançar, cozinha das festas dos próximos 3 dias, contas fixas do mês, estoque no mínimo e lotes vencendo.
+- Atalhos novos no painel: Resultado do mês e Lançar compra.
+- Evento → Consumo: "Ficha da festa" para imprimir (horário, convidados, pacote, tema, bebidas, quanto fazer de cada salgado, equipe e espaço para anotações do dia).
+- Relatórios refeitos com a mesma conta do Resultado do mês: festas fechadas, % de orçamentos que fecharam, ticket médio, resultado médio por festa, custo por convidado, motivos de orçamentos perdidos, dias mais pedidos, rentabilidade por pacote e por tipo de festa, produtos e receitas que mais pesam no custo e rentabilidade de cada festa.
+- Configurações: "Cópia de segurança completa" baixa um arquivo com todos os dados da plataforma e do estoque.
+- Mensagem clara quando a internet cai durante um lançamento do estoque.
+
 # v2.0.0 — Etapa 4: resultado mensal da empresa
 
 - Financeiro ganhou três abas: Resultado do mês (abre primeiro), Lançamentos e Despesas fixas.

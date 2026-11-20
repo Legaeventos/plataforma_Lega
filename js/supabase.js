@@ -115,7 +115,7 @@ export async function deleteGuest(session,guestId){
 // Usa o login da plataforma; renova o acesso uma vez se o Supabase disser 401.
 export async function platRest(metodo,caminho,body,prefer){
   let s=await getSession();if(!s)throw authError('Entre de novo na Plataforma Lega.');
-  const ir=(tok)=>fetch(`${SUPABASE_URL}/rest/v1/${caminho}`,{method:metodo,cache:'no-store',headers:{...jsonHeaders(tok),...(prefer?{'Prefer':prefer}:{})},body:body===undefined?undefined:JSON.stringify(body)});
+  const ir=(tok)=>fetch(`${SUPABASE_URL}/rest/v1/${caminho}`,{method:metodo,cache:'no-store',headers:{...jsonHeaders(tok),...(prefer?{'Prefer':prefer}:{})},body:body===undefined?undefined:JSON.stringify(body)}).catch(()=>{const e=new Error(navigator.onLine===false?'Sem internet agora. Confira a conexão; se estava salvando algo, atualize a tela e veja se foi gravado antes de repetir.':'Não foi possível falar com o banco da plataforma (internet instável ou Supabase fora do ar). Se estava salvando algo, atualize a tela e veja se foi gravado antes de repetir.');e.code='REDE';throw e;});
   let r=await ir(s.access_token);
   if(r.status===401){const n=await refreshSession();if(!n)throw authError('Sessão expirada');r=await ir(n.access_token);}
   if(r.status===401)throw authError('Sessão expirada');

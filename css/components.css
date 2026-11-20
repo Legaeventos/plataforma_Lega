@@ -391,3 +391,20 @@
 .rm-totalano td{font-weight:800;border-top:2px solid #e6dcef}
 .rm-barra{width:22%}.rm-barra span{display:block;height:10px;border-radius:6px;background:#7cc196;min-width:2px}.rm-barra span.neg{background:#e59a8f}
 @media(max-width:900px){.rm-colunas{grid-template-columns:1fr}.rm-barra{display:none}}
+/* v2.1.0 — painel: mês e rotina */
+.mes-faixa{display:grid;grid-template-columns:repeat(3,1fr) auto;gap:14px;align-items:center;background:linear-gradient(135deg,#fff 0%,#f6effb 100%)}
+.mes-faixa small{display:block;color:#7b6d88;font-size:.8rem;margin-bottom:2px}
+.mes-faixa strong{font-size:1.25rem;color:#2d1b3d}.mes-faixa strong.neg{color:#a0281b}
+.rotina-lista{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.rotina-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;background:#faf7fc;border:1px solid #eee5f3}
+.rotina-item.is-urgente{background:#fff4f2;border-color:#f3c9c2}
+.rotina-ic{font-size:20px;width:30px;text-align:center}
+.rotina-txt{flex:1;min-width:0}.rotina-txt strong{display:block}.rotina-txt small{color:#7b6d88}
+.rotina-acoes{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.rotina-wa{color:#1b7f3b!important;border-color:#bfe3c9!important;text-decoration:none}
+.rotina-vazia{color:#2f7a45;font-weight:600;margin:8px 0 0}
+.rel-kpis em{display:block;font-style:normal;color:#7b6d88;font-size:.8rem;margin-top:4px}
+.rel-sub{font-size:.95rem;margin:16px 0 8px}
+.report-bar-row i.neg{background:#e59a8f}
+.rel-cons span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px}
+@media(max-width:900px){.mes-faixa{grid-template-columns:1fr 1fr}.mes-faixa .btn{grid-column:1/-1}.rotina-item{flex-wrap:wrap}.rotina-acoes{width:100%}}

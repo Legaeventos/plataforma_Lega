@@ -4,6 +4,7 @@ import { treeProgress } from '../../core/components/tree-progress.js';
 import { analyzeEvent } from '../../core/engine/event-analyzer.js';
 import { buildPriorities, priorityLevel } from '../../core/engine/priority-engine.js';
 import { validadeDe, hojeISO, diasUteisEntre } from '../../core/engine/validade-orcamento.js';
+import { tarefas as tarefasRotina, tarefasEstoque, resumoMes } from '../../core/engine/rotina.js';
 
 const EVENTS_KEY = 'lega.eventos';
 const CLIENTS_KEY = 'lega.clientes';
@@ -188,6 +189,44 @@ function emptyBlock(message) {
   return `<div class="dashboard-empty"><span>🌿</span><p>${esc(message)}</p></div>`;
 }
 
+function itemRotina(t) {
+  const acao = t.eventoId ? `data-route="eventos" data-event-id="${esc(t.eventoId)}" data-tab="${esc(t.aba || 'auto')}"`
+    : t.rota === 'estoque' ? `data-dash-estoque="${esc(t.estoqueAba || 'visao')}"` : `data-route="${esc(t.rota || 'dashboard')}"`;
+  return `<li class="rotina-item rotina-${t.tipo} ${t.prioridade === 0 ? 'is-urgente' : ''}"><span class="rotina-ic">${t.icone}</span><span class="rotina-txt"><strong>${esc(t.titulo)}</strong><small>${esc(t.detalhe || '')}</small></span>
+    <span class="rotina-acoes">${t.whatsapp ? `<a class="btn btn-ghost btn-sm rotina-wa" href="${esc(t.whatsapp)}" target="_blank" rel="noopener">WhatsApp</a>` : ''}<button class="btn btn-ghost btn-sm" type="button" ${acao}>Abrir</button></span></li>`;
+}
+function painelRotina() {
+  let lista = [];
+  try { lista = tarefasRotina(); } catch (e) { console.error(e); }
+  return `<section class="panel rotina-panel" aria-label="Rotina">
+    <div class="panel-header"><div><h2>Rotina da semana</h2><p>Cobranças, festas para encerrar, cozinha, contas do mês e estoque, num lugar só.</p></div><span class="attention-count">${lista.length}</span></div>
+    <ul class="rotina-lista">${lista.map(itemRotina).join('')}<li id="rotinaEstoque" hidden></li></ul>
+    ${lista.length ? '' : '<p class="rotina-vazia">✓ Nada pendente nos próximos dias.</p>'}</section>`;
+}
+function faixaMes() {
+  let r; try { r = resumoMes(); } catch (e) { console.error(e); return ''; }
+  const mes = new Date().toLocaleDateString('pt-BR', { month: 'long' });
+  return `<section class="mes-faixa panel" aria-label="Resumo do mês">
+    <div><small>Resultado de ${esc(mes)} (até agora)</small><strong class="${r.resultado < 0 ? 'neg' : ''}">${money(r.resultado)}</strong></div>
+    <div><small>Recebido de clientes no mês</small><strong>${money(r.recebido)}</strong></div>
+    <div><small>Parcelas vencidas</small><strong class="${r.vencidas ? 'neg' : ''}">${r.vencidas ? `${r.vencidas} · ${money(r.valorVencido)}` : 'Nenhuma'}</strong></div>
+    <button class="btn btn-ghost" type="button" data-route="financeiro">Ver resultado do mês →</button></section>`;
+}
+
+export function mount() {
+  const root = document.querySelector('#app');
+  root.querySelectorAll('[data-dash-estoque]').forEach(b => b.onclick = () => irEstoque(b.dataset.dashEstoque));
+  root.querySelectorAll('[data-dash-ir-estoque]').forEach(b => b.onclick = () => irEstoque(b.dataset.dashIrEstoque, true));
+  tarefasEstoque().then(lista => {
+    const alvo = root.querySelector('#rotinaEstoque'); if (!alvo || !lista.length) return;
+    alvo.outerHTML = lista.map(itemRotina).join('');
+    root.querySelectorAll('[data-dash-estoque]').forEach(b => b.onclick = () => irEstoque(b.dataset.dashEstoque));
+    const n = root.querySelector('.rotina-panel .attention-count'); if (n) n.textContent = String(Number(n.textContent || 0) + lista.length);
+    root.querySelector('.rotina-vazia')?.remove();
+  }).catch(() => { });
+}
+function irEstoque(aba, novo = false) { try { const u = JSON.parse(localStorage.getItem('lega.estoque.ui') || '{}'); localStorage.setItem('lega.estoque.ui', JSON.stringify({ ...u, aba, ...(novo ? { novo: true } : {}) })); } catch { } location.hash = 'estoque'; }
+
 export function render({ user }) {
   const data = operationalData();
   const nearest = data.future[0] || null;
@@ -216,6 +255,8 @@ export function render({ user }) {
         ${metricCard({ className: 'green', icon: 'muda.svg', label: 'Valores a receber', value: money(data.receivable), note: `${data.clients} cliente(s) cadastrado(s)` })}
       </section>
 
+      ${faixaMes()}
+      ${painelRotina()}
       ${painelValidade()}
       <section class="assistant-panel panel" aria-label="Assistente operacional">
         <div class="panel-header">
@@ -297,7 +338,8 @@ export function render({ user }) {
           <div class="shortcut-grid">
             <button data-route="eventos"><img src="assets/botanica/semente.svg" alt=""><span><strong>Novo evento</strong><small>Iniciar uma festa</small></span></button>
             <button data-route="clientes"><img src="assets/botanica/broto.svg" alt=""><span><strong>Novo cliente</strong><small>Cadastrar contato</small></span></button>
-            <button data-route="financeiro"><img src="assets/botanica/muda.svg" alt=""><span><strong>Financeiro</strong><small>Consultar lançamentos</small></span></button>
+            <button data-route="financeiro"><img src="assets/botanica/muda.svg" alt=""><span><strong>Resultado do mês</strong><small>Festas, contas e pró-labore</small></span></button>
+            <button type="button" data-dash-ir-estoque="compras"><img src="assets/botanica/semente.svg" alt=""><span><strong>Lançar compra</strong><small>Entrada no estoque</small></span></button>
             <button data-route="agenda"><img src="assets/botanica/folha.svg" alt=""><span><strong>Ver agenda</strong><small>Próximas datas</small></span></button>
           </div>
           <div class="operation-summary">
