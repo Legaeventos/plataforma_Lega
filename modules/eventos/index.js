@@ -224,7 +224,7 @@ function consumptionContent(e){
   const virada=!!readJSON('lega.estoque.virada',null);
   const ce=e.consumoEstoque;const antigos=e.consumos||[];
   const SETOR_NOME={bebidas:'Bebidas',alimentacao:'Alimentação',decoracao:'Decoração',escritorio:'Escritório e casa'};
-  const linhasNovo=ce?.itens?.length?ce.itens.map(x=>`<tr><td>${esc(SETOR_NOME[x.setor]||x.setor)}</td><td>${esc(x.produto)}</td><td>${Number(Number(x.quantidade).toFixed(3)).toLocaleString('pt-BR')} ${esc(x.unidade||'')}</td><td>${money(x.custo)}</td><td>${x.venda?money(x.venda):'—'}</td></tr>`).join(''):'';
+  const linhasNovo=ce?.itens?.length?ce.itens.map(x=>`<tr><td>${esc(SETOR_NOME[x.setor]||x.setor)}</td><td>${esc(x.produto)}</td><td>${x.unidades?`${Number(x.unidades).toLocaleString('pt-BR')} un · `:''}${Number(Number(x.quantidade).toFixed(3)).toLocaleString('pt-BR')} ${esc(x.unidade||'')}</td><td>${money(x.custo)}</td><td>${x.venda?money(x.venda):'—'}</td></tr>`).join(''):'';
   const linhasAntigo=antigos.map(x=>`<tr><td>${esc(x.setor)}</td><td>${esc(x.produto)}</td><td>${x.quantidade}</td><td>${money(Number(x.quantidade)*Number(x.custo||0))}</td><td>${money(Number(x.quantidade)*Number(x.valorVenda||0))}</td></tr>`).join('');
   const custo=Number(ce?.custo||0)+antigos.reduce((a,x)=>a+Number(x.quantidade||0)*Number(x.custo||0),0);
   const venda=Number(ce?.venda||0)+Number(ce?.rolha||0)+antigos.reduce((a,x)=>a+Number(x.quantidade||0)*Number(x.valorVenda||0),0);

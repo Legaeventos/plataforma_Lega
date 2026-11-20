@@ -357,3 +357,6 @@
 .estoque-module .bb-table th{text-align:left}
 .es-item .es-conv input{width:84px;flex:none}.es-item .es-conv select{width:auto;flex:1}
 .es-item .es-conv span{white-space:nowrap}
+.es-atualizar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;border:1px solid #f0dca8;background:#fff8e8}.es-atualizar>div{flex:1;min-width:240px}.es-atualizar p{margin:4px 0 0;font-size:.9rem}
+.es-unid{padding:12px;border-radius:12px;background:#faf7fc;border:1px dashed #d9c8ea}.es-unid.on{border-style:solid;border-color:#b997d3;background:#f5eefa}
+.es-unid small{display:block;margin:6px 0}.es-unid .es-conv input{width:70px}

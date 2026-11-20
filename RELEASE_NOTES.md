@@ -1,3 +1,12 @@
+# v1.8.0 — Salgados: unidades na cozinha, kg no estoque
+
+- Produto pode ser marcado "A cozinha conta este produto em unidades" (salgados comprados em pacote de 2 kg com quantidade variável).
+- No consumo da festa: informar as unidades feitas e o peso aproximado. O estoque baixa pelo peso; as unidades ficam guardadas.
+- A plataforma aprende a média de unidades por kg de cada produto. Depois do número de lançamentos escolhido no produto (padrão 50), ao digitar as unidades o peso é sugerido sozinho (dá para corrigir).
+- Sem o peso, enquanto ainda está aprendendo, a plataforma pede o peso antes de salvar.
+- O evento mostra "200 un · 2,5 kg" na aba Consumo.
+- Requer rodar de novo o texto do estoque no Supabase (a tela Estoque avisa e tem o botão para copiar).
+
 # v1.7.2 — Cópia do controle de bebidas com ids em código
 
 - A cópia parava com "invalid input syntax for type bigint": algumas tabelas do sistema antigo identificam as linhas por código (uuid). Agora essas linhas ganham números novos na plataforma e todas as referências entre tabelas (produto, compra, lote, festa, controle do bar) são trocadas juntas; o código antigo fica guardado.

@@ -13,7 +13,7 @@ import { platRest } from '../../js/supabase.js';
 import * as bebidasBanco from '../bebidas/banco.js';
 import {
   SETORES, setorNome, setorIcone, TIPOS_ITEM, UNIDADES, rpc, carregar, invalidar, situacao, viradaLocal,
-  vencendo, migrarDoAntigo, conferirMigracao, virarChave
+  vencendo, migrarDoAntigo, conferirMigracao, virarChave, aprendizado
 } from '../../core/engine/estoque-db.js';
 
 const UI_KEY = 'lega.estoque.ui';
@@ -49,6 +49,7 @@ const saldoDe = id => Number(estDe(id)?.quantidade || 0);
 const setorDe = id => prodPorId(id)?.setor || 'bebidas';
 const unidadeDe = id => prodPorId(id)?.unidade || 'un';
 const ativos = () => (d?.produtos || []).filter(p => p.ativo !== false);
+const bancoV2 = () => Number(sit?.sqlVersao || 1) >= 2;
 const doSetor = p => ui.setor === 'todos' || (p.setor || 'bebidas') === ui.setor;
 
 // ------------------------------------------------------------------ carregamento
@@ -85,7 +86,7 @@ export function render() {
   else if (sit.instalado === null) corpo = `<section class="panel empty-state"><h3>Sem conexão com o banco da plataforma.</h3><p>${esc(sit.erro || '')}</p><button class="btn btn-primary" type="button" data-es="atualizar">Tentar de novo</button></section>`;
   else if (!(sit.virada || viradaLocal())) corpo = telaMigracao();
   else if (!d) corpo = '<section class="panel empty-state"><h3>Carregando produtos, compras e consumo…</h3></section>';
-  else corpo = `<nav class="bb-tabs">${ABAS.map(([k, t]) => `<button type="button" class="${ui.aba === k ? 'active' : ''}" data-es-aba="${k}">${t}</button>`).join('')}</nav>${avisoHtml()}${telaAba()}`;
+  else corpo = `${bancoV2() ? '' : `<section class="panel es-atualizar"><div><b>🛠️ Atualização do banco disponível</b><p>Para usar a contagem de salgados em unidades, rode de novo o texto do estoque no Supabase (SQL Editor → New query → colar → Run). Pode rodar por cima: não apaga nada.</p></div><button class="btn btn-primary" type="button" data-es="copiar-sql">📋 Copiar o texto</button><button class="btn btn-ghost" type="button" data-es="atualizar">Já rodei</button></section>`}<nav class="bb-tabs">${ABAS.map(([k, t]) => `<button type="button" class="${ui.aba === k ? 'active' : ''}" data-es-aba="${k}">${t}</button>`).join('')}</nav>${avisoHtml()}${telaAba()}`;
   return `<div class="page-grid estoque-module">${cabecalho()}${corpo}</div>`;
 }
 
@@ -202,6 +203,10 @@ function modalProduto(id = null, aoSalvar = null, setorInicial = null) {
       <div class="field"><label>Situação</label><select name="ativo"><option value="1" ${p.ativo !== false ? 'selected' : ''}>Em uso</option><option value="0" ${p.ativo === false ? 'selected' : ''}>Não uso mais (esconder)</option></select></div>
       <div class="field es-so-bebidas"><label>Consumo conta para</label><select name="somente_adultos"><option value="" ${p.somente_adultos == null ? 'selected' : ''}>Automático pelo nome</option><option value="1" ${p.somente_adultos === true ? 'selected' : ''}>Só adultos</option><option value="0" ${p.somente_adultos === false ? 'selected' : ''}>Adultos e crianças</option></select></div>
       <div class="field es-so-bebidas"><label>Volume (litros, opcional)</label><input name="volume_litros" inputmode="decimal" value="${esc(p.volume_litros == null ? '' : String(p.volume_litros).replace('.', ','))}" placeholder="Ex.: 2"></div>
+      ${bancoV2() ? (() => { const ap = id ? aprendizado(d, id) : { n: 0 }; const min = Number(p.minimo_aprendizado || 50); return `<div class="field field-full es-unid ${p.conta_unidades ? 'on' : ''}"><label class="es-check"><input type="checkbox" name="conta_unidades" ${p.conta_unidades ? 'checked' : ''}> 🍽️ A cozinha conta este produto em <b>unidades</b> (ex.: salgados)</label>
+        <small>No consumo da festa vocês informam as unidades e o peso aproximado. A plataforma aprende quantas unidades vêm por <span class="es-conv__un">${esc(p.unidade || 'un')}</span> e, depois de</small>
+        <div class="es-conv"><input name="minimo_aprendizado" inputmode="numeric" value="${min}"><span>lançamentos, passa a sugerir o peso sozinha.</span></div>
+        ${id && p.conta_unidades ? `<p class="es-dica">${ap.n ? `Média até agora: <b>${qtd(ap.unPorPeso, 1)} un por ${esc(p.unidade)}</b> em ${ap.n} lançamento(s)${ap.n >= min ? ' ✓ já sugerindo' : ` · faltam ${min - ap.n} para sugerir`}.` : 'Ainda sem lançamentos com unidades.'}</p>` : ''}</div>`; })() : ''}
       <div class="field field-full"><label>Observação</label><input name="observacao" value="${esc(p.observacao || '')}"></div>
       <div class="field field-full form-actions"><button type="button" class="btn btn-ghost" data-m="fechar">Cancelar</button><button class="btn btn-primary">${id ? 'Salvar' : 'Cadastrar'}</button></div>
     </form>
@@ -210,12 +215,13 @@ function modalProduto(id = null, aoSalvar = null, setorInicial = null) {
   </div>`;
   document.body.appendChild(box);
   const f = box.querySelector('#esProdForm');
-  const atualizarSetor = () => { box.querySelectorAll('.es-so-bebidas').forEach(x => x.hidden = f.setor.value !== 'bebidas'); box.querySelector('.es-conv__un').textContent = f.unidade.value; };
+  const atualizarSetor = () => { box.querySelectorAll('.es-so-bebidas').forEach(x => x.hidden = f.setor.value !== 'bebidas'); box.querySelectorAll('.es-conv__un').forEach(x => x.textContent = f.unidade.value); const u = box.querySelector('.es-unid'); if (u) u.style.display = f.unidade.value === 'un' ? 'none' : ''; };
   atualizarSetor(); f.setor.onchange = atualizarSetor; f.unidade.onchange = atualizarSetor;
   box.querySelectorAll('.es-tipo input').forEach(r => r.onchange = () => box.querySelectorAll('.es-tipo').forEach(l => l.classList.toggle('on', l.querySelector('input').checked)));
   const fechar = () => box.remove();
   box.querySelector('[data-m="fechar"]').onclick = fechar;
   box.onclick = ev => { if (ev.target === box) fechar(); };
+  f.conta_unidades?.addEventListener('change', () => box.querySelector('.es-unid')?.classList.toggle('on', f.conta_unidades.checked));
   f.onsubmit = async ev => {
     ev.preventDefault();
     const v = Object.fromEntries(new FormData(f).entries());
@@ -224,6 +230,7 @@ function modalProduto(id = null, aoSalvar = null, setorInicial = null) {
     if (v.unidade_compra && !(fator > 0)) return alert('Informe quantas unidades vêm em cada unidade de compra.');
     const linha = { nome: v.nome.trim(), setor: v.setor, categoria: v.categoria.trim() || null, unidade: v.unidade, unidade_compra: v.unidade_compra || null, fator_compra: v.unidade_compra ? fator : 1,
       tipo_item: v.tipo_item || 'consumo', ativo: v.ativo === '1', observacao: v.observacao.trim() || null, updated_at: new Date().toISOString(),
+      ...(bancoV2() ? { conta_unidades: !!f.conta_unidades?.checked && v.unidade !== 'un', minimo_aprendizado: Math.max(1, Math.round(numero(v.minimo_aprendizado) || 50)) } : {}),
       ...(v.setor === 'bebidas' ? { somente_adultos: v.somente_adultos === '' ? null : v.somente_adultos === '1', volume_litros: vol > 0 ? vol : null } : {}) };
     const btn = f.querySelector('.btn-primary'); btn.disabled = true; btn.textContent = 'Salvando…';
     try {
@@ -360,7 +367,7 @@ function novoConsumo(eventoPlataforma = '') {
   if (!c.itens.length) c.itens = [itemConsumoVazio()];
   return c;
 }
-function itemConsumoVazio(p = null) { return { produto_id: p?.id ?? '', texto: p ? rotuloProduto(p) : '', levado: '', devolvido: '', consumido: '', aberto: '', preco: '' }; }
+function itemConsumoVazio(p = null) { return { produto_id: p?.id ?? '', texto: p ? rotuloProduto(p) : '', levado: '', devolvido: '', consumido: '', aberto: '', preco: '', unidades: '', sugerido: false }; }
 function preencherDoEvento(c, id) {
   const e = eventosPlataforma().find(x => x.id === id); if (!e) return;
   const q = quoteDe(e);
@@ -381,6 +388,7 @@ function carregarConsumoExistente(c, ev) {
   c.itens = d.eventosItens.filter(i => String(i.evento_id) === String(ev.id)).map(i => {
     const p = prodPorId(i.produto_id); const b = bar[String(i.produto_id)] || {};
     return { produto_id: i.produto_id, texto: p ? rotuloProduto(p) : `#${i.produto_id}`, levado: b.levado != null ? String(b.levado) : '', devolvido: b.levado != null && b.devolvido != null ? String(b.devolvido) : '',
+      unidades: Number(i.quantidade_unidades) > 0 ? String(Number(i.quantidade_unidades)).replace('.', ',') : '', sugerido: false,
       consumido: String(Number(i.quantidade ?? i.quantidade_consumida ?? 0)).replace('.', ','), aberto: b.aberto ? String(b.aberto).replace('.', ',') : '', preco: Number(i.preco_unitario || 0) ? String(i.preco_unitario).replace('.', ',') : '' };
   });
   if (!c.itens.length) c.itens = [itemConsumoVazio()];
@@ -423,8 +431,10 @@ function formConsumo() {
       <div class="field es-item__prod"><label>Produto</label><input list="esListaProd" data-k="texto" value="${esc(it.texto)}" placeholder="Nome ou código" autocomplete="off">${p ? `<small>${setorIcone(p.setor)} em estoque ${qtd(s + jaLancado)} ${esc(p.unidade || 'un')}</small>` : it.texto ? '<small class="es-alerta">Produto não encontrado</small>' : ''}</div>
       <div class="field"><label>Levado</label><input data-k="levado" inputmode="decimal" value="${esc(it.levado)}" placeholder="—"></div>
       <div class="field"><label>Voltou</label><input data-k="devolvido" inputmode="decimal" value="${esc(it.devolvido)}" ${usaLevado ? '' : 'disabled'} placeholder="—"></div>
-      <div class="field"><label>Consumido</label><input data-k="consumido" inputmode="decimal" value="${usaLevado ? esc(String(cons).replace('.', ',')) : esc(it.consumido)}" ${usaLevado ? 'readonly class="es-calc"' : ''}><small>${p ? esc(p.unidade || 'un') : ''}${falta ? ' <span class="es-alerta">acima do estoque</span>' : ''}</small></div>
-      <div class="field"><label>${beb ? 'Sobra aberta' : '&nbsp;'}</label>${beb ? `<input data-k="aberto" inputmode="decimal" value="${esc(it.aberto)}" placeholder="0">` : ''}</div>
+      <div class="field"><label>Consumido${p && p.unidade && p.unidade !== 'un' ? ` (${esc(p.unidade)})` : ''}</label><input data-k="consumido" inputmode="decimal" value="${usaLevado ? esc(String(cons).replace('.', ',')) : esc(it.consumido)}" ${usaLevado ? 'readonly class="es-calc"' : ''}><small>${p ? esc(p.unidade || 'un') : ''}${falta ? ' <span class="es-alerta">acima do estoque</span>' : ''}</small></div>
+      ${p?.conta_unidades && bancoV2() ? (() => { const ap = aprendizado(d, p.id, c.id); const min = Number(p.minimo_aprendizado || 50); const pronto = ap.n >= min;
+        return `<div class="field es-item__un"><label>Unidades (cozinha)</label><input data-k="unidades" inputmode="numeric" value="${esc(it.unidades)}" placeholder="ex.: 200"><small>${pronto ? `${it.sugerido ? '↖ peso sugerido · ' : ''}média ${qtd(ap.unPorPeso, 1)} un/${esc(p.unidade)}` : `aprendendo: ${ap.n} de ${min} · informe o peso`}</small></div>`; })()
+        : `<div class="field"><label>${beb ? 'Sobra aberta' : '&nbsp;'}</label>${beb ? `<input data-k="aberto" inputmode="decimal" value="${esc(it.aberto)}" placeholder="0">` : ''}</div>`}
       <div class="field"><label>Preço de venda</label><input data-k="preco" inputmode="decimal" value="${esc(it.preco)}" placeholder="se cobrado"></div>
       <button type="button" class="es-x" data-es="tirar-consumo" title="Tirar item">✕</button></div>`;
   }).join('');
@@ -469,6 +479,10 @@ async function salvarConsumo(root) {
   const usados = validos.filter(i => consumidoDe(i) > 0 || numero(i.aberto) > 0);
   const repetidos = usados.map(i => String(i.produto_id)).filter((x, ix, a) => a.indexOf(x) !== ix);
   if (repetidos.length) return alert(`O produto ${prodPorId(repetidos[0])?.nome} aparece mais de uma vez. Junte numa linha só.`);
+  for (const i of validos.filter(x => numero(x.unidades) > 0 && !(consumidoDe(x) > 0))) { const p = prodPorId(i.produto_id); if (p?.conta_unidades) return alert(`Informe o peso aproximado de ${p.nome} (${i.unidades} un). É com ele que a plataforma aprende a média e baixa o estoque.`); }
+  for (const i of usados) { const p = prodPorId(i.produto_id); if (!p?.conta_unidades || !bancoV2()) continue;
+    if (numero(i.unidades) > 0 && !(consumidoDe(i) > 0)) return alert(`Informe o peso aproximado de ${p.nome} (${i.unidades} un). É com ele que a plataforma aprende a média e baixa o estoque.`);
+    if (consumidoDe(i) > 0 && !(numero(i.unidades) > 0) && !confirm(`${p.nome}: faltou informar quantas unidades a cozinha fez. Sem isso, este lançamento não ensina a média. Salvar assim mesmo?`)) return; }
   if (!usados.some(i => consumidoDe(i) > 0) && !confirm('Nenhum item com quantidade consumida. Salvar mesmo assim?')) return;
   const semVolta = usados.filter(i => i.levado !== '' && (i.devolvido === '' || i.devolvido == null));
   if (semVolta.length && !confirm(`${semVolta.length} produto(s) com "Levado" mas sem "Voltou": tudo o que foi levado conta como consumido.\n\nSalvar assim mesmo?`)) return;
@@ -478,7 +492,7 @@ async function salvarConsumo(root) {
   const payload = { id: c.id, nome_evento: c.nome.trim(), data: c.data, adultos: Math.round(numero(c.adultos) || 0), criancas: Math.round(numero(c.criancas) || 0), observacao: c.observacao.trim(),
     tipo_evento: c.tipo, alcoolico_adesao: c.alcool === 'adesao', sem_alcool: c.alcool === 'sem_alcool', rolha_cobrada: c.rolha, valor_rolha: c.rolha ? numero(c.valorRolha) : 0,
     controle_bar: Object.keys(controle).length ? controle : null, plataforma_evento_id: c.eventoPlataforma || null,
-    itens: usados.filter(i => consumidoDe(i) > 0).map(i => ({ produto_id: Number(i.produto_id), quantidade: consumidoDe(i), preco_unitario: numero(i.preco) || 0 })) };
+    itens: usados.filter(i => consumidoDe(i) > 0).map(i => ({ produto_id: Number(i.produto_id), quantidade: consumidoDe(i), preco_unitario: numero(i.preco) || 0, ...(numero(i.unidades) > 0 ? { unidades: Math.round(numero(i.unidades)) } : {}) })) };
   ocupado = true; desenhar();
   try {
     const eid = await rpc('est_registrar_consumo', { p: payload });
@@ -493,7 +507,7 @@ async function salvarConsumo(root) {
 
 // Resumo do consumo dentro do evento da plataforma (resultado da festa)
 function resumirNoEvento(ev) {
-  const itens = d.eventosItens.filter(i => String(i.evento_id) === String(ev.id)).map(i => { const p = prodPorId(i.produto_id); return { produtoId: i.produto_id, produto: p?.nome || `#${i.produto_id}`, setor: p?.setor || 'bebidas', quantidade: Number(i.quantidade || 0), unidade: p?.unidade || 'un', custo: Number(i.custo_total || 0), venda: Number(i.valor_total || 0) }; });
+  const itens = d.eventosItens.filter(i => String(i.evento_id) === String(ev.id)).map(i => { const p = prodPorId(i.produto_id); return { produtoId: i.produto_id, produto: p?.nome || `#${i.produto_id}`, setor: p?.setor || 'bebidas', quantidade: Number(i.quantidade || 0), unidade: p?.unidade || 'un', unidades: Number(i.quantidade_unidades || 0) || null, custo: Number(i.custo_total || 0), venda: Number(i.valor_total || 0) }; });
   const resumo = { estEventoId: ev.id, custo: itens.reduce((s, i) => s + i.custo, 0), venda: itens.reduce((s, i) => s + i.venda, 0), rolha: ev.rolha_cobrada ? Number(ev.valor_rolha || 0) : 0, itens, atualizadoEm: new Date().toISOString() };
   const evs = eventosPlataforma();
   writeJSON(EVENTOS_KEY, evs.map(e => e.id !== ev.plataforma_evento_id ? e : { ...e, consumoEstoque: resumo, historico: [...(e.historico || []), { id: `hist_${Date.now().toString(36)}`, label: e.consumoEstoque ? 'Consumo da festa atualizado' : 'Consumo da festa lançado', detail: `${itens.length} item(ns) · custo ${money(resumo.custo)}`, at: new Date().toISOString() }] }));
@@ -637,6 +651,9 @@ function ligar(root) {
         inp.addEventListener(k === 'texto' ? 'change' : 'input', () => {
           if (k === 'texto') { lerCabecalhoConsumo(root); it.texto = inp.value; const p = acharProduto(inp.value); it.produto_id = p ? p.id : ''; if (p) it.texto = rotuloProduto(p); desenhar(); if (p) root.querySelector(`.es-item[data-ix="${el.dataset.ix}"] [data-k="levado"]`)?.focus(); return; }
           it[k] = inp.value;
+          if (k === 'consumido') it.sugerido = false;
+          if (k === 'unidades') { const p = prodPorId(it.produto_id); const ap = p ? aprendizado(d, p.id, consumo.id) : null; const un = numero(inp.value);
+            if (p && ap && ap.n >= Number(p.minimo_aprendizado || 50) && (it.levado === '' || it.levado == null) && (it.sugerido || it.consumido === '')) { it.consumido = un > 0 ? String(Number((un * ap.pesoPorUn).toFixed(3))).replace('.', ',') : ''; it.sugerido = un > 0; } }
           clearTimeout(inp._t); inp._t = setTimeout(() => { lerCabecalhoConsumo(root); const pos = inp.selectionStart; desenhar(); const n = root.querySelector(`.es-item[data-ix="${el.dataset.ix}"] [data-k="${k}"]`); n?.focus(); try { n?.setSelectionRange(pos, pos); } catch { } }, 600);
         });
       });

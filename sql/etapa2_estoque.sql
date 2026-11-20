@@ -198,6 +198,12 @@ create table if not exists public.est_agenda (
   created_at timestamptz not null default now()
 );
 
+-- v1.8.0: produtos controlados em kg que a cozinha conta em unidades (salgados).
+-- No consumo informa-se as unidades e o peso; a plataforma aprende a média e passa a sugerir o peso.
+alter table public.est_produtos add column if not exists conta_unidades boolean not null default false;
+alter table public.est_produtos add column if not exists minimo_aprendizado integer not null default 50;
+alter table public.est_eventos_itens add column if not exists quantidade_unidades numeric(14,3);
+
 create index if not exists est_itens_compra_idx on public.est_compras_itens (compra_id);
 create index if not exists est_lotes_prod_idx on public.est_lotes (produto_id, data_compra, created_at);
 create index if not exists est_ev_itens_idx on public.est_eventos_itens (evento_id);
@@ -370,8 +376,9 @@ begin
   for it in select * from jsonb_array_elements(coalesce(p->'itens','[]'::jsonb)) loop
     q := round(coalesce((it->>'quantidade')::numeric,0), 3);
     continue when q <= 0;
-    insert into public.est_eventos_itens (evento_id, produto_id, quantidade, preco_unitario, valor_total)
-    values (eid, (it->>'produto_id')::bigint, q, coalesce((it->>'preco_unitario')::numeric,0), round(q * coalesce((it->>'preco_unitario')::numeric,0),2))
+    insert into public.est_eventos_itens (evento_id, produto_id, quantidade, preco_unitario, valor_total, quantidade_unidades)
+    values (eid, (it->>'produto_id')::bigint, q, coalesce((it->>'preco_unitario')::numeric,0), round(q * coalesce((it->>'preco_unitario')::numeric,0),2),
+            nullif((it->>'unidades')::numeric, 0))
     returning id into iid;
     falta := q; custo := 0;
     for l in select id, quantidade_disponivel, custo_unitario from public.est_lotes
@@ -487,5 +494,9 @@ end $$;
 
 grant execute on all functions in schema public to authenticated;
 revoke execute on function public.est_pode() from anon;
+
+-- versão do banco (a plataforma avisa quando precisa rodar este texto de novo)
+insert into public.est_config (chave, valor) values ('sql_versao', '2'::jsonb)
+on conflict (chave) do update set valor = excluded.valor, atualizado_em = now();
 
 notify pgrst, 'reload schema';

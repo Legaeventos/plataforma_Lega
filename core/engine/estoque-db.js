@@ -50,7 +50,8 @@ export async function situacao() {
     const local = readJSON(VIRADA_KEY, null);
     if (v && !local) writeJSON(VIRADA_KEY, v);
     const mig = (cfg || []).find(x => x.chave === 'migracao')?.valor || null;
-    return { instalado: true, virada: v, migracao: mig };
+    const sqlVersao = Number((cfg || []).find(x => x.chave === 'sql_versao')?.valor || 1);
+    return { instalado: true, virada: v, migracao: mig, sqlVersao };
   } catch (e) {
     if (tabelaFaltando(e)) return { instalado: false, virada: null };
     if (e.code === 'AUTH') throw e;
@@ -94,6 +95,13 @@ export function indice(d) {
   const prod = new Map(d.produtos.map(p => [String(p.id), p]));
   const est = new Map(d.estoque.map(e => [String(e.produto_id), e]));
   return { prod, est };
+}
+/** Média aprendida de unidades por kg (salgados): só lançamentos com unidades e peso. */
+export function aprendizado(d, produtoId, ignorarEventoId = null) {
+  const its = d.eventosItens.filter(i => String(i.produto_id) === String(produtoId) && Number(i.quantidade_unidades) > 0 && Number(i.quantidade) > 0 && String(i.evento_id) !== String(ignorarEventoId));
+  const un = its.reduce((a, i) => a + Number(i.quantidade_unidades), 0);
+  const peso = its.reduce((a, i) => a + Number(i.quantidade), 0);
+  return { n: its.length, un, peso, unPorPeso: peso > 0 ? un / peso : 0, pesoPorUn: un > 0 ? peso / un : 0 };
 }
 export function saldo(d, produtoId) { return Number(d.estoque.find(e => String(e.produto_id) === String(produtoId))?.quantidade || 0); }
 
