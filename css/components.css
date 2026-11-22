@@ -435,3 +435,6 @@
 .es-lotes-uso{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px 12px;font-size:.8rem;color:#5b4a68;margin-top:-2px}
 .es-lotes-uso span{background:#fff;border:1px solid #eee5f3;border-radius:8px;padding:2px 8px}.es-lotes-uso b{margin-left:auto}
 .es-lotes{font-size:.85rem}.es-hist h3 small{font-weight:400;color:#8a7d96}
+.es-item--perda{background:#fff6f3;border-color:#f3cfc2;grid-template-columns:minmax(220px,2.2fr) minmax(120px,1fr) minmax(220px,2.4fr)}
+.es-item__perda-info{grid-column:1/-1;margin:-4px 0 0;font-size:.78rem}
+@media(max-width:900px){.es-item--perda{grid-template-columns:1fr 1fr}.es-item__motivo{grid-column:1/-1}}

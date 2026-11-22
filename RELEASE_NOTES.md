@@ -1,3 +1,10 @@
+# v2.3.0 — Perdas na festa
+
+- Consumo da festa: botão "⚠️ ＋ Perda / quebra". A linha de perda tem produto, quantidade e motivo; pode repetir um produto que já está no consumo normal.
+- A perda baixa o estoque (pelos lotes) e entra no custo da festa, mas não conta como consumo dos convidados: as médias e sugestões de compra de bebidas não ficam distorcidas.
+- O motivo fica guardado no consumo, na movimentação do estoque ("Perda na festa · … · motivo") e aparece no evento.
+- Requer rodar de novo o texto do estoque no Supabase (a tela Estoque avisa).
+
 # v2.2.1 — Custo pelos lotes no consumo
 
 - O formulário de consumo voltou a mostrar o custo de cada item pelos lotes (como no controle de bebidas): quanto sai de cada lote, com origem, data e custo, e "Custo pelos lotes" no total. É exatamente o que é gravado ao salvar. Antes mostrava uma estimativa pelo custo médio.

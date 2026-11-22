@@ -123,7 +123,8 @@ export function formatoBebidas(d) {
   const produtos = d.produtos.filter(p => (p.setor || 'bebidas') === 'bebidas').map(comLegado);
   const ids = new Set(produtos.map(p => String(p.id)));
   const doSetor = r => ids.has(String(r.produto_id));
-  const eventosItens = d.eventosItens.filter(doSetor).map(comLegado);
+  // perdas na festa (quebra, cortesia) não contam como consumo dos convidados nas médias
+  const eventosItens = d.eventosItens.filter(doSetor).filter(i => !i.perda).map(comLegado);
   const itensIds = new Set(eventosItens.map(i => String(i.id)));
   const eventosComBebida = new Set(eventosItens.map(i => String(i.evento_id)));
   return {

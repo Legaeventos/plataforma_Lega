@@ -217,6 +217,9 @@ create table if not exists public.est_receitas (
 );
 alter table public.est_eventos_itens add column if not exists receita_id bigint;
 alter table public.est_eventos add column if not exists receitas jsonb;   -- [{receita_id, nome, porcoes}]
+-- v2.3.0: perdas na festa (quebra, estragou, cortesia): baixam o estoque e entram no custo, mas não contam como consumo dos convidados
+alter table public.est_eventos_itens add column if not exists perda boolean not null default false;
+alter table public.est_eventos_itens add column if not exists motivo text;
 
 create index if not exists est_itens_compra_idx on public.est_compras_itens (compra_id);
 create index if not exists est_lotes_prod_idx on public.est_lotes (produto_id, data_compra, created_at);
@@ -392,9 +395,9 @@ begin
   for it in select * from jsonb_array_elements(coalesce(p->'itens','[]'::jsonb)) loop
     q := round(coalesce((it->>'quantidade')::numeric,0), 3);
     continue when q <= 0;
-    insert into public.est_eventos_itens (evento_id, produto_id, quantidade, preco_unitario, valor_total, quantidade_unidades, receita_id)
+    insert into public.est_eventos_itens (evento_id, produto_id, quantidade, preco_unitario, valor_total, quantidade_unidades, receita_id, perda, motivo)
     values (eid, (it->>'produto_id')::bigint, q, coalesce((it->>'preco_unitario')::numeric,0), round(q * coalesce((it->>'preco_unitario')::numeric,0),2),
-            nullif((it->>'unidades')::numeric, 0), nullif(it->>'receita_id','')::bigint)
+            nullif((it->>'unidades')::numeric, 0), nullif(it->>'receita_id','')::bigint, coalesce((it->>'perda')::boolean, false), nullif(trim(it->>'motivo'),''))
     returning id into iid;
     falta := q; custo := 0;
     for l in select id, quantidade_disponivel, custo_unitario from public.est_lotes
@@ -414,7 +417,7 @@ begin
     update public.est_estoque set quantidade = quantidade - q, updated_at = now() where produto_id = (it->>'produto_id')::bigint;
     update public.est_eventos_itens set custo_total = round(custo,2) where id = iid;
     insert into public.est_movimentacoes (produto_id, tipo, quantidade, motivo, data_movimento, referencia_tabela, referencia_id, custo_total)
-    values ((it->>'produto_id')::bigint, 'saida', q, 'Evento · ' || coalesce(nullif(p->>'nome_evento',''),'Evento'), ((p->>'data')::date + time '12:00')::timestamptz, 'eventos', eid, round(custo,2));
+    values ((it->>'produto_id')::bigint, 'saida', q, case when coalesce((it->>'perda')::boolean,false) then 'Perda na festa · ' else 'Evento · ' end || coalesce(nullif(p->>'nome_evento',''),'Evento') || coalesce(' · ' || nullif(trim(it->>'motivo'),''), ''), ((p->>'data')::date + time '12:00')::timestamptz, 'eventos', eid, round(custo,2));
   end loop;
   return eid;
 end $$;
@@ -512,7 +515,7 @@ grant execute on all functions in schema public to authenticated;
 revoke execute on function public.est_pode() from anon;
 
 -- versão do banco (a plataforma avisa quando precisa rodar este texto de novo)
-insert into public.est_config (chave, valor) values ('sql_versao', '3'::jsonb)
+insert into public.est_config (chave, valor) values ('sql_versao', '4'::jsonb)
 on conflict (chave) do update set valor = excluded.valor, atualizado_em = now();
 
 notify pgrst, 'reload schema';
