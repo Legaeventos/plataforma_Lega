@@ -214,6 +214,10 @@ function modalProduto(id = null, aoSalvar = null, setorInicial = null) {
       <div class="field field-full form-actions"><button type="button" class="btn btn-ghost" data-m="fechar">Cancelar</button><button class="btn btn-primary">${id ? 'Salvar' : 'Cadastrar'}</button></div>
     </form>
     ${id ? `<details class="es-baixa"><summary>➖ Dar baixa (quebra, perda, uso interno)</summary><form id="esBaixaForm" class="form-grid"><div class="field"><label>Quantidade que saiu (${esc(p.unidade || 'un')})</label><input name="quantidade" inputmode="decimal" required></div><div class="field"><label>Motivo</label><select name="motivo"><option>Quebra / avaria</option><option>Vencido</option><option>Uso interno</option><option>Doação / cortesia</option><option>Ajuste manual</option></select></div><div class="field field-full"><label>Observação</label><input name="observacao"></div><div class="field field-full form-actions"><button class="btn btn-ghost">Registrar baixa</button></div><p class="es-dica field-full">Em estoque agora: <b>${qtd(e?.quantidade)} ${esc(p.unidade || 'un')}</b></p></form></details>
+    ${(() => { const ls = d.lotes.filter(l => String(l.produto_id) === String(id) && Number(l.quantidade_disponivel) > 0); const soma = ls.reduce((s0, l) => s0 + Number(l.quantidade_disponivel), 0); const sem = Number(e?.quantidade || 0) - soma;
+      return `<div class="es-hist"><h3>Lotes em estoque <small>(saem do mais antigo para o mais novo)</small></h3>${ls.length ? `<table class="bb-table es-lotes"><thead><tr><th>Lote</th><th>Disponível</th><th>Custo unit.</th><th>Validade</th><th></th></tr></thead><tbody>${ls.map(l => `<tr><td>${esc(rotuloLote(l))}</td><td>${qtd(l.quantidade_disponivel)} de ${qtd(l.quantidade_original)}</td><td>${money(l.custo_unitario)}</td><td>${l.validade ? dataBR(l.validade) : '—'}</td><td><button type="button" class="btn btn-ghost btn-sm" data-lote-custo="${l.id}" data-atual="${Number(l.custo_unitario || 0)}">Corrigir custo</button></td></tr>`).join('')}</tbody></table>` : '<p class="es-dica">Nenhum lote com saldo.</p>'}
+        ${Math.abs(sem) > 0.0005 ? `<p class="es-alerta">${sem > 0 ? `${qtd(sem)} ${esc(p.unidade || 'un')} em estoque sem lote: essas saem pelo custo médio (${money(e?.custo_medio)}).` : `Os lotes somam ${qtd(-sem)} a mais que o estoque.`} Uma conferência do produto acerta isso.</p>` : ''}
+        <p class="es-dica">Custo médio ${money(e?.custo_medio)} (calculado na última compra; o custo das festas usa os lotes acima). <button type="button" class="btn btn-ghost btn-sm" data-recalc-medio>Recalcular pelos lotes</button></p></div>`; })()}
     <div class="es-hist"><h3>Últimas movimentações</h3>${movs.length ? `<ul>${movs.map(m => `<li>${dataBR(m.data_movimento)} · ${m.tipo === 'entrada' ? '＋' : '−'}${qtd(m.quantidade)} · ${esc(m.motivo || m.tipo)}</li>`).join('')}</ul>` : '<p class="es-dica">Nenhuma ainda.</p>'}</div>` : ''}
   </div>`;
   document.body.appendChild(box);
@@ -245,6 +249,20 @@ function modalProduto(id = null, aoSalvar = null, setorInicial = null) {
       if (aoSalvar) aoSalvar(pid); else { aviso = { tipo: 'ok', texto: `✓ ${esc(linha.nome)} ${id ? 'atualizado' : 'cadastrado'}.` }; desenhar(); }
     } catch (e) { btn.disabled = false; btn.textContent = id ? 'Salvar' : 'Cadastrar'; alert(`Não foi possível salvar: ${e.message}`); }
   };
+  const recalcularMedio = async () => {
+    const ls = d.lotes.filter(l => String(l.produto_id) === String(id) && Number(l.quantidade_disponivel) > 0);
+    const q = ls.reduce((s0, l) => s0 + Number(l.quantidade_disponivel), 0);
+    const medio = q > 0 ? ls.reduce((s0, l) => s0 + Number(l.quantidade_disponivel) * Number(l.custo_unitario || 0), 0) / q : Number(e?.custo_medio || 0);
+    await platRest('PATCH', `est_estoque?produto_id=eq.${id}`, { custo_medio: Number(medio.toFixed(4)), updated_at: new Date().toISOString() }, 'return=minimal');
+    return medio;
+  };
+  box.querySelectorAll('[data-lote-custo]').forEach(b => b.onclick = async () => {
+    const v = prompt('Custo correto por unidade deste lote (R$). Ex.: 0 para bonificação.', String(b.dataset.atual).replace('.', ','));
+    if (v === null) return; const n = numero(v); if (!(n >= 0)) return alert('Valor inválido.');
+    try { await platRest('PATCH', `est_lotes?id=eq.${b.dataset.loteCusto}`, { custo_unitario: n, updated_at: new Date().toISOString() }, 'return=minimal'); await recarregarDados(); await recalcularMedio(); await recarregarDados(); box.remove(); aviso = { tipo: 'ok', texto: `✓ Custo do lote corrigido para ${money(n)}; custo médio recalculado.` }; desenhar(); modalProduto(id); }
+    catch (err) { alert(err.message); }
+  });
+  box.querySelector('[data-recalc-medio]')?.addEventListener('click', async () => { try { const m = await recalcularMedio(); await recarregarDados(); box.remove(); aviso = { tipo: 'ok', texto: `✓ Custo médio de ${esc(p.nome)} recalculado: ${money(m)}.` }; desenhar(); modalProduto(id); } catch (err) { alert(err.message); } });
   box.querySelector('#esBaixaForm')?.addEventListener('submit', async ev => {
     ev.preventDefault();
     const v = Object.fromEntries(new FormData(ev.currentTarget).entries()); const q = numero(v.quantidade);
@@ -554,9 +572,35 @@ function expandirReceitas(c) {
     (r.itens || []).forEach(i => out.push({ produto_id: Number(i.produto_id), quantidade: Number((Number(i.quantidade) * n).toFixed(3)), receita_id: Number(r.id) })); });
   return out;
 }
+// Mesma conta que o banco faz ao salvar: lote mais antigo primeiro, custo de cada lote.
+// Ao editar, o que esta festa já tinha tirado volta para os lotes antes de simular.
+function rotuloLote(l) {
+  const compra = l.compra_id != null ? d.compras.find(c => String(c.id) === String(l.compra_id)) : null;
+  const origem = l.origem === 'ajuste' ? 'Ajuste de estoque' : l.origem === 'migracao' ? 'Saldo migrado' : compra ? `Compra${compra.fornecedor ? ' · ' + compra.fornecedor : ''}` : 'Compra';
+  return `${origem} de ${dataBR(l.data_compra || l.created_at)}`;
+}
+function simularLotes(c) {
+  const disp = new Map(d.lotes.map(l => [String(l.id), Number(l.quantidade_disponivel || 0)]));
+  if (c.id) {
+    const meus = new Set(d.eventosItens.filter(i => String(i.evento_id) === String(c.id)).map(i => String(i.id)));
+    d.consumos.filter(x => meus.has(String(x.evento_item_id)) && x.lote_id != null).forEach(x => disp.set(String(x.lote_id), (disp.get(String(x.lote_id)) || 0) + Number(x.quantidade || 0)));
+  }
+  const ordem = [...d.lotes].sort((a, b) => String(a.data_compra || '').localeCompare(String(b.data_compra || '')) || String(a.created_at || '').localeCompare(String(b.created_at || '')) || Number(a.id) - Number(b.id));
+  const alocar = (pid, q) => {
+    let falta = q; const partes = [];
+    ordem.filter(l => String(l.produto_id) === String(pid)).forEach(l => { if (falta <= 1e-9) return; const dd = disp.get(String(l.id)) || 0; if (dd <= 0) return; const usar = Math.min(dd, falta); disp.set(String(l.id), dd - usar); falta -= usar; partes.push({ rotulo: rotuloLote(l), quantidade: usar, custo: Number(l.custo_unitario || 0) }); });
+    if (falta > 1e-9) partes.push({ rotulo: 'Sem lote (usa o custo médio)', quantidade: falta, custo: Number(estDe(pid)?.custo_medio || 0), semLote: true });
+    return { partes, custo: partes.reduce((s, x) => s + x.quantidade * x.custo, 0) };
+  };
+  const porItem = c.itens.map(it => { const q = consumidoDe(it); return it.produto_id && q > 0 ? alocar(it.produto_id, q) : null; });
+  const receitas = expandirReceitas(c).map(x => alocar(x.produto_id, x.quantidade));
+  return { porItem, custoReceitas: receitas.reduce((s, r) => s + r.custo, 0) };
+}
+const resumoLotes = a => a && a.partes.length ? `<div class="es-lotes-uso">${a.partes.map(x => `<span class="${x.semLote ? 'es-alerta' : ''}">${qtd(x.quantidade)} × ${money(x.custo)} · ${esc(x.rotulo)}</span>`).join('')}<b>custo ${money(a.custo)}</b></div>` : '';
 function formConsumo() {
   const c = consumo;
   const setorVis = c.setor;
+  const sim = simularLotes(c);
   const itens = c.itens.map((it, ix) => {
     const p = prodPorId(it.produto_id);
     if (setorVis !== 'todos' && p && p.setor !== setorVis) return '';
@@ -574,11 +618,11 @@ function formConsumo() {
         return `<div class="field es-item__un"><label>Unidades (cozinha)</label><input data-k="unidades" inputmode="numeric" value="${esc(it.unidades)}" placeholder="ex.: 200"><small>${pronto ? `${it.sugerido ? '↖ peso sugerido · ' : ''}média ${qtd(ap.unPorPeso, 1)} un/${esc(p.unidade)}` : `aprendendo: ${ap.n} de ${min} · informe o peso`}</small></div>`; })()
         : `<div class="field"><label>${beb ? 'Sobra aberta' : '&nbsp;'}</label>${beb ? `<input data-k="aberto" inputmode="decimal" value="${esc(it.aberto)}" placeholder="0">` : ''}</div>`}
       <div class="field"><label>Preço de venda</label><input data-k="preco" inputmode="decimal" value="${esc(it.preco)}" placeholder="se cobrado"></div>
+      ${resumoLotes(sim.porItem[ix])}
       <button type="button" class="es-x" data-es="tirar-consumo" title="Tirar item">✕</button></div>`;
   }).join('');
   const expandidas = expandirReceitas(c);
-  const custoReceitas = expandidas.reduce((s, x) => s + x.quantidade * Number(estDe(x.produto_id)?.custo_medio || 0), 0);
-  const custoEstim = custoReceitas + c.itens.reduce((s, it) => { const p = prodPorId(it.produto_id); return s + (p ? consumidoDe(it) * Number(estDe(p.id)?.custo_medio || 0) : 0); }, 0);
+  const custoEstim = sim.custoReceitas + sim.porItem.reduce((s, a) => s + (a ? a.custo : 0), 0);
   const venda = c.itens.reduce((s, it) => s + consumidoDe(it) * (numero(it.preco) || 0), 0);
   return `<section class="panel es-form"><div class="panel-header"><div><span class="eyebrow">${c.id ? 'EDITAR CONSUMO' : 'CONSUMO DA FESTA'}</span><h2>${c.id ? esc(c.nome) : 'Lançar consumo'}</h2></div><button class="btn btn-ghost" type="button" data-es="cancelar-consumo">Cancelar</button></div>
     <div class="form-grid">
@@ -598,7 +642,7 @@ function formConsumo() {
     <div class="es-itens">${itens}</div>
     ${bancoV3() ? `<div class="es-rec-bloco"><h3>Receitas (extras)</h3>${receitasAtivas().length ? `${(c.receitas || []).map((x, ix) => { const r = (d.receitas || []).find(y => String(y.id) === String(x.receita_id)); const n = numero(x.porcoes) || 0;
         return `<div class="es-rec-linha" data-rix="${ix}"><select data-rk="receita_id"><option value="">Escolha a receita</option>${receitasAtivas().map(y => `<option value="${y.id}" ${String(y.id) === String(x.receita_id) ? 'selected' : ''}>${esc(y.nome)}</option>`).join('')}</select><input data-rk="porcoes" inputmode="decimal" value="${esc(x.porcoes)}" placeholder="${esc(r?.rendimento || 'porção')}s"><span>${r && n > 0 ? `= ${(r.itens || []).map(i => `${qtd(i.quantidade * n)} ${esc(unidadeDe(i.produto_id))} ${esc(prodPorId(i.produto_id)?.nome || '')}`).join(' · ')} · ${money(custoPorcao(r) * n)}` : ''}</span><button type="button" class="es-x" data-es="tirar-receita">✕</button></div>`; }).join('')}<button class="btn btn-ghost btn-sm" type="button" data-es="mais-receita">＋ Receita</button>` : '<p class="es-dica">Cadastre as receitas dos extras (cachorro-quente, cumbucas) na aba <b>Receitas</b> para lançar só as porções aqui.</p>'}</div>` : ''}
-    <div class="es-form__rodape"><div><button class="btn btn-ghost" type="button" data-es="mais-consumo">＋ Outro item</button></div><div class="es-total">Custo estimado <strong>${money(custoEstim)}</strong>${venda ? ` · Venda <strong>${money(venda)}</strong>` : ''}</div></div>
+    <div class="es-form__rodape"><div><button class="btn btn-ghost" type="button" data-es="mais-consumo">＋ Outro item</button></div><div class="es-total">Custo pelos lotes <strong>${money(custoEstim)}</strong>${venda ? ` · Venda <strong>${money(venda)}</strong>` : ''}</div></div>
     <div class="field"><label>Observação (opcional)</label><input id="kObs" value="${esc(c.observacao)}"></div>
     <div class="es-acoes">${c.id ? '<button class="btn btn-ghost" type="button" data-es="excluir-consumo">Excluir este consumo</button>' : ''}<button class="btn btn-primary" type="button" data-es="salvar-consumo" ${ocupado ? 'disabled' : ''}>${c.id ? 'Salvar alterações' : 'Salvar e baixar do estoque'}</button></div></section>`;
 }

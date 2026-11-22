@@ -1,3 +1,8 @@
+# v2.2.1 — Custo pelos lotes no consumo
+
+- O formulário de consumo voltou a mostrar o custo de cada item pelos lotes (como no controle de bebidas): quanto sai de cada lote, com origem, data e custo, e "Custo pelos lotes" no total. É exatamente o que é gravado ao salvar. Antes mostrava uma estimativa pelo custo médio.
+- Produto: lista dos lotes em estoque (origem, disponível, custo, validade), aviso quando há estoque sem lote, botão "Corrigir custo" do lote (ex.: bonificação = R$ 0) e "Recalcular pelos lotes" o custo médio.
+
 # v2.2.0 — Mais fácil de fazer
 
 - Botão ＋ fixo em todas as telas: Novo orçamento, Receber pagamento, Lançar despesa, Lançar compra e Consumo de festa, sem passar pelos menus.
